@@ -51,4 +51,10 @@
         "**/htmlcov": true,
         "**/pdm.lock": true,
     },
+    "sonarlint.connectedMode.project": { // configuracao do SonarCloud
+    // id do seu usuario (clique no seu projeto, no menu a esquerda clique em Information, copie o OrganizationKey e cole ele aqui)
+    "connectionId": "marcosdaviifba", 
+    // id do seu repositorio (clique no seu projeto, no menu a esquerda clique em Information, copie o ProjectKey e cole ele aqui)
+    "projectKey": "engsoft2", 
+},
 }
