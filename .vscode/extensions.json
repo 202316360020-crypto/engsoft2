@@ -1,0 +1,14 @@
+{ // este arquivo define as extensoes do VSCODE que sao usadas neste projeto
+    "recommendations": [
+        "ms-python.autopep8",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "SonarSource.sonarlint-vscode",
+        "jebbs.plantuml",
+        "tamasfe.even-better-toml",
+        "GitHub.copilot-chat",
+        "yzhang.markdown-all-in-one",
+        "bierner.markdown-preview-github-styles",
+    ]
+}

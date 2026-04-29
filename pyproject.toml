@@ -1,0 +1,110 @@
+[project]
+name = "python_pdm_template"
+version = "0.1.0"
+description = "Template for Python PDM-based projects"
+authors = [{ name = "None", email = "none@domain.com" }]
+dependencies = []
+requires-python = ">=3.14"
+readme = "README.md"
+license-files = ["LICEN[CS]E*", "README.md"]
+classifiers = ["Programming Language :: Python :: 3"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "pyright>=1.1.408",
+    "ruff>=0.15.1",
+]
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.build]
+package-dir = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cache-clear --ff --cov=src --cov-report=html --cov-report=term --cov-report=xml"
+
+[tool.pyright]
+languageServer = "Pylance"   # Use Pylance como servidor de linguagem
+diagnosticMode= "workspace"     # Modo de diagnóstico para todo o workspace (em vez de apenas arquivos abertos)
+typeCheckingMode = "strict"     # Modo de verificação de tipos estrito para detectar mais erros
+extraPaths = ["src"]            # Adicionar o diretório src ao caminho de pesquisa para resolver importações
+indexing = true                 # Habilitar indexação para melhor navegação e autocompletar
+useLibraryCodeForTypes = true   # Usar código de biblioteca para inferir tipos, o que pode melhorar a precisão da análise de tipos para bibliotecas de terceiros
+
+# veja opcoes disponiveis em hhttps://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-diagnostics-settings
+
+# CODE ISSUES
+reportImportCycles = "error"      # Importacao circular - importacoes que criam ciclos entre modulos
+reportUnreachable = "error"             # unreachable code
+reportUnnecessaryIsInstance = "none" # isinstance() call that can be simplified
+
+# TYPE ISSUES
+reportMissingReturnType = "warning" # Missing return types
+reportMissingParameterType = "warning" # Missing parameter types
+reportUnknownLambdaType = "none" # lambda functions with unknown types
+
+# INHERITANCE ISSUES
+reportMissingSuperCall = "error"           # missing super() call in a constructor
+reportUninitializedInstanceVariable = "error"  # uninitialized instance variables
+reportPropertyTypeMismatch = "error" # Property type mismatch - type of property does not match type of getter/setter
+reportImplicitOverride="error" # method overrides a method in the base class but is not marked with @override
+
+# Include files for analysis
+include = [
+    "src",
+    "tests",
+]
+
+# Exclude files from analysis
+exclude = [
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    ".mypy_cache",
+    ".pytest_cache",
+]
+
+[tool.ruff.lint]
+select = [
+    "A", # erros de colisao com nomes existentes (ex: variaveis com mesmo nome de variaveis built-in do Python, variaveis com mesmo nome de modulos do Python, etc)
+    "B", # erros de bugs (ex: variaveis nao usadas, variaveis definidas mais de uma vez, etc)
+    "D", # erros de docstrings (ex: docstrings faltando, docstrings com formato incorreto, etc)
+    "F", # erros identificados pelo Flake8 (ex: erros de sintaxe, erros de indentacao, etc)
+    "N", # erros de nomes de variáveis, funções, classes, etc (ex: variáveis com nomes pouco descritivos, funções com nomes que nao seguem o padrão snake_case, etc)
+    "S", # erros de segurança (ex: uso de funções inseguras, uso de bibliotecas com vulnerabilidades conhecidas, etc)
+    "DOC", # erros de documentação (ex: docstrings faltando, docstrings com formato incorreto, etc)
+    "SLF", # erros de uso de membros privados de outras classes (ex: acessar atributos ou métodos privados de outras classes, etc)
+    "RET", # erros de retorno de funções (funções que nao retornam nada, ou que retornam tipos de dados diferentes em blocos de código diferentes, etc)
+    "ARG", # erros de argumentos de funções (ex: argumentos nao usados, argumentos definidos mais de uma vez, etc)
+    "PIE", # erros de Pie (ex: Enums com valores duplicados, Enums com valores que não são do tipo esperado, etc)
+    "PLE", # erros de Pylint gerais (ex: __bool__() que retorna valores inesperados, variáveis que podem ser usadas antes de serem definidas, etc)
+    "PLW", # erros de warning de Pylint (código que pode ser melhorado, código que pode ser simplificado, etc)
+    "PLR", # erros de refactor de Pylint (refactoring de código, código duplicado, código que pode ser simplificado, etc)
+    "SIM", # erros de simplicidade do código (código complexo que pode ser simplificado)
+    "C90", # erros de complexidade ciclomática (funcoes/métodos com muitas linhas de código, muitos loops, etc)
+    "C4", # erros de list/dict comprehensions (performance ruim)
+]
+
+ignore=[
+    "B017", # assert ExceptionType is not specific enough
+    "B021", # f-string docstrings 
+    "D210", # No whitespace allowed surrounding docstring text
+    "D212", # Multi-line docstring summary should start at the first line
+    "S101", # Use of assert detected. 
+    "S110", # try-except-pass detected. 
+    "S112", # try-except-continue detected. 
+    "S201", # Flask debug mode is enabled.
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257" # Use a convenção PEP 257 para validar as docstrings, o que inclui a validação dos parâmetros :param: e outros elementos de documentação.
+ 
