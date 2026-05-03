@@ -62,3 +62,5 @@ Para mais informações sobre as essas e outras funcionalidades disponíveis no 
 Cada pasta ou arquivo acima tem um ``README.md`` explicando sua finalidade, como funciona, e como usar cada uma delas. **Clique nos links acima e leia com atenção cada um dos READMEs para entender melhor o projeto.**
 - Em cada um dos links acima **há tarefas para você realizar**, para praticar o que foi explicado no README. 
 - As tarefas poderão ser **utilizadas para fins de avaliação na disciplina.** Assim, realize todas as tarefas propostas e envie suas respostas no nosso Google Classroom.
+## Integrante
+Abner Azevedo - contribuição inicial
