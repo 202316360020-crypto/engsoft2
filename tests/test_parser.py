@@ -92,8 +92,8 @@ class OHLCVParser:
             raise MissingColumnsError(f"Colunas ausentes: {missing}")
 
     def validate_chronological_order(self, df: pd.DataFrame) -> None:
-        if not df.index.is_monotonic_increasing:
-            raise OutOfOrderDatesError("Datas fora de ordem cronológica.")
+        if not df.index.is_monotonic_increasing or df.index.duplicated().any():
+            raise OutOfOrderDatesError("Datas fora de ordem cronológica ou duplicadas.")
 
     def validate_capital(self, capital: float) -> None:
         if capital <= 0:

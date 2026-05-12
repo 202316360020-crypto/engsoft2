@@ -77,6 +77,8 @@ class MovingAverageStrategy(BaseStrategy):
 
     def __init__(self, short_window: int = 9, long_window: int = 21):
         """Inicialize a estratégia com as janelas curta e longa."""
+        if short_window >= long_window:
+            raise ValueError("short_window deve ser menor que long_window.")
         self.short_window = short_window
         self.long_window = long_window
 
