@@ -16,11 +16,11 @@ from unittest.mock import MagicMock, patch, call
 # ---------------------------------------------------------------------------
 # Reaproveitando stubs do test_strategies para integração
 # ---------------------------------------------------------------------------
-from test_strategies import (
+from tests.test_strategies import (
     BaseStrategy, BuyAndHoldStrategy, MovingAverageStrategy,
     SimulationResult, BankruptcyError,
 )
-from test_parser import OHLCVParser, MissingColumnsError, OutOfOrderDatesError
+from tests.test_parser import OHLCVParser, MissingColumnsError, OutOfOrderDatesError
 
 
 # ---------------------------------------------------------------------------
