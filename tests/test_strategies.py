@@ -1,5 +1,5 @@
 """
-Testes unitários — Estratégias de Investimento (core/strategies/)
+Testes unitários — Estratégias de Investimento (core/strategies/).
 
 Cobre:
 - Estratégia Buy and Hold
@@ -10,10 +10,20 @@ Cobre:
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import pandas as pd
+
+# ---------------------------------------------------------------------------
+# Constantes de teste
+# ---------------------------------------------------------------------------
+INITIAL_CAPITAL = 10_000.0
+DEFAULT_SHORT_WINDOW = 9
+DEFAULT_LONG_WINDOW = 21
+CUSTOM_SHORT_WINDOW = 5
+CUSTOM_LONG_WINDOW = 20
+MAX_WIN_RATE_PCT = 100.0
 
 
 # ---------------------------------------------------------------------------
@@ -27,15 +37,16 @@ import pandas as pd
 
 class BankruptcyError(Exception):
     """Levantada quando o saldo do investidor atinge zero ou fica negativo."""
-    pass
 
 
 @dataclass
 class SimulationResult:
     """
     Contrato de saída de qualquer estratégia.
+
     O Core deve retornar este objeto ao fim de cada simulação.
     """
+
     final_balance: float
     total_return_pct: float
     win_rate_pct: float
@@ -49,6 +60,7 @@ class BaseStrategy(ABC):
 
     @abstractmethod
     def run(self, data: pd.DataFrame, initial_capital: float) -> SimulationResult:
+        """Execute a estratégia e retorne o resultado da simulação."""
         raise NotImplementedError
 
 
@@ -56,6 +68,7 @@ class BuyAndHoldStrategy(BaseStrategy):
     """Stub: compra no primeiro dia, vende no último."""
 
     def run(self, data: pd.DataFrame, initial_capital: float) -> SimulationResult:
+        """Execute a estratégia Buy and Hold."""
         raise NotImplementedError("Implemente BuyAndHoldStrategy.run() no Core.")
 
 
@@ -63,10 +76,12 @@ class MovingAverageStrategy(BaseStrategy):
     """Stub: golden cross / death cross com SMA configurável."""
 
     def __init__(self, short_window: int = 9, long_window: int = 21):
+        """Inicialize a estratégia com as janelas curta e longa."""
         self.short_window = short_window
         self.long_window = long_window
 
     def run(self, data: pd.DataFrame, initial_capital: float) -> SimulationResult:
+        """Execute a estratégia de médias móveis."""
         raise NotImplementedError("Implemente MovingAverageStrategy.run() no Core.")
 
 
@@ -93,7 +108,7 @@ class TestBaseStrategyContract:
     def test_custom_strategy_implements_run(self, ohlcv_uptrend):
         """Uma estratégia concreta válida deve poder ser usada no lugar de BaseStrategy."""
         class AlwaysBuyStrategy(BaseStrategy):
-            def run(self, data, initial_capital):
+            def run(self, _data, initial_capital):
                 return SimulationResult(
                     final_balance=initial_capital * 1.1,
                     total_return_pct=10.0,
@@ -117,7 +132,7 @@ class TestBuyAndHoldStrategy:
     """Testes da estratégia Buy and Hold."""
 
     def _make_result(self, initial: float, final: float) -> SimulationResult:
-        """Helper para criar resultado esperado."""
+        """Crie um resultado esperado para os testes."""
         ret = (final - initial) / initial * 100
         return SimulationResult(
             final_balance=final,
@@ -133,7 +148,7 @@ class TestBuyAndHoldStrategy:
         strategy = BuyAndHoldStrategy()
         try:
             result = strategy.run(ohlcv_uptrend, 10_000.0)
-            assert result.final_balance > 10_000.0
+            assert result.final_balance > INITIAL_CAPITAL
             assert result.total_return_pct > 0
         except NotImplementedError:
             pytest.skip("BuyAndHoldStrategy ainda não implementada.")
@@ -142,8 +157,8 @@ class TestBuyAndHoldStrategy:
         """Em tendência de queda, Buy and Hold deve retornar perda."""
         strategy = BuyAndHoldStrategy()
         try:
-            result = strategy.run(ohlcv_downtrend, 10_000.0)
-            assert result.final_balance < 10_000.0
+            result = strategy.run(ohlcv_downtrend, INITIAL_CAPITAL)
+            assert result.final_balance < INITIAL_CAPITAL
             assert result.total_return_pct < 0
         except NotImplementedError:
             pytest.skip("BuyAndHoldStrategy ainda não implementada.")
@@ -177,8 +192,9 @@ class TestBuyAndHoldStrategy:
 
     def test_mocked_run_returns_expected_result(self, ohlcv_uptrend):
         """
-        Teste com Mock: isola BuyAndHoldStrategy para verificar
-        que o motor de simulação chama run() com os parâmetros corretos.
+        Teste com Mock: isola BuyAndHoldStrategy para verificar.
+
+        Verifica que o motor de simulação chama run() com os parâmetros corretos.
         """
         mock_strategy = MagicMock(spec=BuyAndHoldStrategy)
         expected = self._make_result(10_000.0, 13_636.36)
@@ -200,18 +216,19 @@ class TestMovingAverageStrategy:
     def test_default_windows_are_9_and_21(self):
         """Janelas padrão devem ser 9 (curta) e 21 (longa)."""
         strategy = MovingAverageStrategy()
-        assert strategy.short_window == 9
-        assert strategy.long_window == 21
+        assert strategy.short_window == DEFAULT_SHORT_WINDOW
+        assert strategy.long_window == DEFAULT_LONG_WINDOW
 
     def test_custom_windows_are_stored(self):
         """Janelas customizadas devem ser armazenadas corretamente."""
-        strategy = MovingAverageStrategy(short_window=5, long_window=20)
-        assert strategy.short_window == 5
-        assert strategy.long_window == 20
+        strategy = MovingAverageStrategy(short_window=CUSTOM_SHORT_WINDOW, long_window=CUSTOM_LONG_WINDOW)
+        assert strategy.short_window == CUSTOM_SHORT_WINDOW
+        assert strategy.long_window == CUSTOM_LONG_WINDOW
 
     def test_short_window_greater_than_long_raises_value_error(self):
         """
         Janela curta maior que longa é configuração inválida.
+
         A implementação deve lançar ValueError.
         """
         with pytest.raises((ValueError, AssertionError)):
@@ -243,7 +260,7 @@ class TestMovingAverageStrategy:
         strategy = MovingAverageStrategy(short_window=5, long_window=10)
         try:
             result = strategy.run(ohlcv_long, 10_000.0)
-            assert 0.0 <= result.win_rate_pct <= 100.0
+            assert 0.0 <= result.win_rate_pct <= MAX_WIN_RATE_PCT
         except NotImplementedError:
             pytest.skip("MovingAverageStrategy ainda não implementada.")
 
@@ -259,6 +276,7 @@ class TestMovingAverageStrategy:
     def test_mocked_strategy_integration(self, ohlcv_long):
         """
         Teste com Mock: simula o comportamento do motor ao chamar uma estratégia.
+
         Verifica que o motor repassa os dados corretos para a estratégia.
         """
         mock_strategy = MagicMock(spec=MovingAverageStrategy)
@@ -284,7 +302,8 @@ class TestMovingAverageStrategy:
 
 class TestBankruptcyCondition:
     """
-    Valida a regra de negócio RN-02:
+    Valida a regra de negócio RN-02.
+
     Simulação interrompida imediatamente quando saldo <= 0.
     """
 
@@ -308,17 +327,15 @@ class TestBankruptcyCondition:
 
     def test_bankruptcy_during_simulation_does_not_crash_app(self, ohlcv_downtrend):
         """
-        Se saldo atingir zero durante simulação, BankruptcyError deve ser
-        levantada mas capturada pelo motor sem encerrar a aplicação.
+        Se saldo atingir zero durante simulação, BankruptcyError deve ser levantada.
+
+        Deve ser capturada pelo motor sem encerrar a aplicação.
         """
         strategy = MagicMock(spec=BuyAndHoldStrategy)
         strategy.run.side_effect = BankruptcyError("Saldo zerado no pregão 3.")
 
         with pytest.raises(BankruptcyError):
             strategy.run(ohlcv_downtrend, 10.0)
-
-        # A exceção foi capturada — a aplicação não crashou
-        assert True
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +346,7 @@ class TestSimulationResult:
     """Valida a estrutura de retorno da simulação."""
 
     def test_simulation_result_has_required_fields(self):
+        """Verifique que SimulationResult possui todos os campos obrigatórios."""
         result = SimulationResult(
             final_balance=11_000.0,
             total_return_pct=10.0,

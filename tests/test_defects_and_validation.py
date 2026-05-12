@@ -1,5 +1,5 @@
 """
-Testes de defeitos, validação e integração — QuantInvest Suite
+Testes de defeitos, validação e integração — QuantInvest Suite.
 
 Cobre:
 - Testes de defeito: entradas inválidas, boundary values, edge cases
@@ -8,9 +8,17 @@ Cobre:
 - Regressão: garante que bugs conhecidos não reapareçam
 """
 
+import contextlib
 import pytest
 import pandas as pd
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock
+
+# ---------------------------------------------------------------------------
+# Constantes de teste
+# ---------------------------------------------------------------------------
+INITIAL_CAPITAL = 10_000.0
+ZERO_RETURN_THRESHOLD = 0.01
+EXPECTED_CLI_GUI_CALL_COUNT = 2
 
 
 # ---------------------------------------------------------------------------
@@ -40,7 +48,7 @@ class TestBoundaryValues:
         try:
             result = strategy.run(df, 10_000.0)
             # Retorno deve ser 0 (comprou e vendeu pelo mesmo preço)
-            assert abs(result.total_return_pct) < 0.01
+            assert abs(result.total_return_pct) < ZERO_RETURN_THRESHOLD
         except NotImplementedError:
             pytest.skip("BuyAndHoldStrategy ainda não implementada.")
 
@@ -90,8 +98,9 @@ class TestBoundaryValues:
 
 class TestBusinessRulesValidation:
     """
-    Valida conformidade com as Regras de Negócio (RN-01 a RN-05)
-    definidas no DEF da QuantInvest Suite.
+    Valida conformidade com as Regras de Negócio (RN-01 a RN-05).
+
+    Definidas no DEF da QuantInvest Suite.
     """
 
     # RN-01: Validação Cronológica
@@ -104,12 +113,13 @@ class TestBusinessRulesValidation:
     def test_rn01_future_data_not_used_for_past_decisions(self, ohlcv_long):
         """
         RN-01: A estratégia não pode usar dados do índice i+N para decidir em i.
+
         Verificamos isso indiretamente: o resultado com dados embaralhados
         deve diferir do resultado com dados ordenados.
         """
         strategy = MovingAverageStrategy(short_window=5, long_window=10)
         try:
-            result_ordered = strategy.run(ohlcv_long, 10_000.0)
+            strategy.run(ohlcv_long, 10_000.0)
             shuffled = ohlcv_long.sample(frac=1, random_state=42)
             # Dados embaralhados devem ser rejeitados
             parser = OHLCVParser()
@@ -122,6 +132,7 @@ class TestBusinessRulesValidation:
     def test_rn02_bankruptcy_stops_only_current_asset(self):
         """
         RN-02: Falência de um ativo não deve encerrar a aplicação.
+
         O motor de portfólio deve capturar BankruptcyError e continuar.
         """
         mock_strategy = MagicMock(spec=BuyAndHoldStrategy)
@@ -134,7 +145,7 @@ class TestBusinessRulesValidation:
         errors = []
         assets = ["petr4.csv", "vale3.csv"]
 
-        for asset in assets:
+        for _ in assets:
             try:
                 result = mock_strategy.run(pd.DataFrame(), 10_000.0)
                 results.append(result)
@@ -149,6 +160,7 @@ class TestBusinessRulesValidation:
     def test_rn03_cli_and_gui_use_same_core_interface(self):
         """
         RN-03: CLI e GUI devem chamar a mesma interface do Core.
+
         Verificado via mock: ambas as camadas invocam run() com os mesmos parâmetros.
         """
         mock_core = MagicMock(spec=BuyAndHoldStrategy)
@@ -162,7 +174,7 @@ class TestBusinessRulesValidation:
         # Simulando chamada da GUI
         result_gui = mock_core.run(data, capital)
 
-        assert mock_core.run.call_count == 2
+        assert mock_core.run.call_count == EXPECTED_CLI_GUI_CALL_COUNT
         assert result_cli.final_balance == result_gui.final_balance
 
     # RN-04: Integridade dos Dados OHLCV
@@ -193,12 +205,14 @@ class TestBusinessRulesValidation:
 class TestIntegrationPipeline:
     """
     Testa o pipeline completo: Parser → Validação → Strategy → SimulationResult.
+
     Usa mocks para isolar dependências de I/O.
     """
 
     def test_full_pipeline_buy_and_hold_uptrend(self, ohlcv_uptrend):
         """
-        Pipeline completo com dados de alta:
+        Pipeline completo com dados de alta.
+
         1. Parser valida colunas e cronologia
         2. Strategy roda
         3. SimulationResult retornado
@@ -212,13 +226,14 @@ class TestIntegrationPipeline:
         try:
             result = strategy.run(ohlcv_uptrend, 10_000.0)
             assert isinstance(result, SimulationResult)
-            assert result.final_balance > 10_000.0
+            assert result.final_balance > INITIAL_CAPITAL
         except NotImplementedError:
             pytest.skip("BuyAndHoldStrategy ainda não implementada.")
 
     def test_full_pipeline_with_mocked_strategy(self, ohlcv_uptrend):
         """
-        Pipeline com strategy mockada:
+        Pipeline com strategy mockada.
+
         Garante que validações do parser rodam mesmo quando strategy é um mock.
         """
         parser = OHLCVParser()
@@ -241,9 +256,7 @@ class TestIntegrationPipeline:
         mock_strategy.run.assert_called_once_with(ohlcv_uptrend, 10_000.0)
 
     def test_portfolio_pipeline_aggregates_multiple_assets(self, ohlcv_uptrend, ohlcv_downtrend):
-        """
-        RF-04: Pipeline de portfólio deve agregar resultados de múltiplos ativos.
-        """
+        """RF-04: Pipeline de portfólio deve agregar resultados de múltiplos ativos."""
         mock_strategy = MagicMock(spec=BuyAndHoldStrategy)
         mock_strategy.run.side_effect = [
             SimulationResult(11_000.0, 10.0, 100.0, 0.0, 1, []),
@@ -261,8 +274,9 @@ class TestIntegrationPipeline:
 
     def test_pipeline_aborts_on_invalid_data(self, ohlcv_out_of_order):
         """
-        Pipeline deve abortar validação e NÃO chamar a strategy
-        quando os dados são inválidos.
+        Pipeline deve abortar validação e NÃO chamar a strategy.
+
+        Isso acontece quando os dados são inválidos.
         """
         parser = OHLCVParser()
         mock_strategy = MagicMock(spec=BuyAndHoldStrategy)
@@ -281,12 +295,14 @@ class TestIntegrationPipeline:
 class TestRegression:
     """
     Regressões: garante que bugs corrigidos não reapareçam.
+
     Adicione um teste aqui para cada bug encontrado e corrigido.
     """
 
     def test_regression_bankruptcy_does_not_corrupt_portfolio_result(self):
         """
         Bug hipotético: falência de ativo A corrompendo resultado de ativo B.
+
         O resultado de B deve ser independente da falência de A.
         """
         mock_strategy = MagicMock(spec=BuyAndHoldStrategy)
@@ -298,10 +314,8 @@ class TestRegression:
 
         results = []
         for _ in range(2):
-            try:
+            with contextlib.suppress(BankruptcyError):
                 results.append(mock_strategy.run(pd.DataFrame(), 10_000.0))
-            except BankruptcyError:
-                pass
 
         assert len(results) == 1
         assert results[0].final_balance == pytest.approx(15_000.0)
@@ -309,6 +323,7 @@ class TestRegression:
     def test_regression_chronological_validation_runs_before_strategy(self, ohlcv_out_of_order):
         """
         Bug hipotético: estratégia sendo chamada antes da validação cronológica.
+
         A validação deve sempre rodar primeiro.
         """
         mock_strategy = MagicMock(spec=BuyAndHoldStrategy)

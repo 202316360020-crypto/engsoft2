@@ -9,9 +9,8 @@ Cobre:
 - Validação de capital inicial
 """
 
-import io
 import pytest
-from unittest.mock import patch, mock_open, MagicMock
+from unittest.mock import patch, mock_open
 
 # ---------------------------------------------------------------------------
 # ATENÇÃO: os imports abaixo assumem que o Core ficará em:
