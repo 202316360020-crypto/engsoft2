@@ -38,6 +38,7 @@ package-dir = "src"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]
 addopts = "--cache-clear --ff --cov=src --cov-report=html --cov-report=term --cov-report=xml"
 
 [tool.pyright]

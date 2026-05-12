@@ -24,11 +24,11 @@ EXPECTED_CLI_GUI_CALL_COUNT = 2
 # ---------------------------------------------------------------------------
 # Reaproveitando stubs do test_strategies para integração
 # ---------------------------------------------------------------------------
-from tests.test_strategies import (
+from test_strategies import (
     BaseStrategy, BuyAndHoldStrategy, MovingAverageStrategy,
     SimulationResult, BankruptcyError,
 )
-from tests.test_parser import OHLCVParser, MissingColumnsError, OutOfOrderDatesError
+from test_parser import OHLCVParser, MissingColumnsError, OutOfOrderDatesError
 
 
 # ---------------------------------------------------------------------------
