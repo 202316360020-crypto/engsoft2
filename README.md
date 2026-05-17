@@ -71,3 +71,22 @@ Abner Azevedo - contribuição inicial
 - Critérios de aceitação definidos
 - Milestones em acompanhamento
 - Projeto em desenvolvimento
+
+## Status do Projeto
+
+- Testes automatizados implementados
+- Integração contínua (CI/CD) ativa
+- Critérios de aceitação definidos
+- Milestones acompanhados no GitHub
+- Projeto em desenvolvimento
+
+## Arquitetura Geral
+
+O projeto segue arquitetura desacoplada, dividida em:
+
+- Core (motor de simulação e regras de negócio)
+- CLI (interface de linha de comando)
+- GUI (interface gráfica)
+- CI/CD e testes automatizados
+
+Essa separação garante extensibilidade, manutenção e reutilização do núcleo do sistema.
