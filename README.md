@@ -64,4 +64,29 @@ Cada pasta ou arquivo acima tem um ``README.md`` explicando sua finalidade, como
 - As tarefas poderão ser **utilizadas para fins de avaliação na disciplina.** Assim, realize todas as tarefas propostas e envie suas respostas no nosso Google Classroom.
 ## Integrante
 Abner Azevedo - contribuição inicial
+## Status do Projeto
 
+- Testes automatizados implementados
+- Integração contínua (CI/CD) ativa
+- Critérios de aceitação definidos
+- Milestones em acompanhamento
+- Projeto em desenvolvimento
+
+## Status do Projeto
+
+- Testes automatizados implementados
+- Integração contínua (CI/CD) ativa
+- Critérios de aceitação definidos
+- Milestones acompanhados no GitHub
+- Projeto em desenvolvimento
+
+## Arquitetura Geral
+
+O projeto segue arquitetura desacoplada, dividida em:
+
+- Core (motor de simulação e regras de negócio)
+- CLI (interface de linha de comando)
+- GUI (interface gráfica)
+- CI/CD e testes automatizados
+
+Essa separação garante extensibilidade, manutenção e reutilização do núcleo do sistema.
