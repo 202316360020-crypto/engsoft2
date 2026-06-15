@@ -8,15 +8,6 @@ Objetivo: Ter pelo menos uma função test_* para cada requisito, mesmo que vazi
 garantindo rastreabilidade completa entre DEF → Testes → Implementação.
 """
 
-import pytest
-from unittest.mock import MagicMock, patch, Mock
-import pandas as pd
-from io import StringIO
-import json
-import csv
-import threading
-import time
-
 
 # ============================================================================
 # REQUISITOS FUNCIONAIS (RF-01 até RF-10)
@@ -24,7 +15,7 @@ import time
 
 class TestRF01StrategySimulation:
     """RF-01: Simulação de Estratégias
-    
+
     Ler séries temporais OHLCV e simular compras/vendas com lógica pré-definida,
     calculando saldo final, taxa de acerto e Max Drawdown.
     """
@@ -57,7 +48,7 @@ class TestRF01StrategySimulation:
 
 class TestRF02CLIInterface:
     """RF-02: Interface CLI
-    
+
     Fornecer CLI headless com flags --file, --strategy, --capital, --start, --end,
     suportando todos os modos de simulação.
     """
@@ -105,7 +96,7 @@ class TestRF02CLIInterface:
 
 class TestRF03GUIInterface:
     """RF-03: Interface GUI
-    
+
     Interface gráfica com seleção de arquivo, dropdown de estratégia,
     campo de capital inicial e visualização de gráficos (candlestick / curva de capital).
     """
@@ -148,7 +139,7 @@ class TestRF03GUIInterface:
 
 class TestRF04BatchProcessing:
     """RF-04: Processamento em Lote
-    
+
     Ambas as interfaces devem aceitar múltiplos arquivos simultaneamente,
     consolidando resultados como portfólio.
     """
@@ -181,7 +172,7 @@ class TestRF04BatchProcessing:
 
 class TestRF05OutputReports:
     """RF-05: Relatórios de Saída
-    
+
     Gerar sumário da execução. GUI: painel de resultados. CLI: exportação do log
     de operações em JSON ou CSV.
     """
@@ -224,7 +215,7 @@ class TestRF05OutputReports:
 
 class TestRF06BuyAndHoldStrategy:
     """RF-06: Estratégia Buy and Hold
-    
+
     Implementar estratégia de compra única no início e venda no fim do período.
     """
 
@@ -261,7 +252,7 @@ class TestRF06BuyAndHoldStrategy:
 
 class TestRF07MovingAverageStrategy:
     """RF-07: Estratégia Cruzamento de Médias Móveis
-    
+
     Implementar estratégia de cruzamento entre média curta e média longa
     (SMA/EMA configuráveis).
     """
@@ -304,7 +295,7 @@ class TestRF07MovingAverageStrategy:
 
 class TestRF08ChronologicalValidation:
     """RF-08: Validação Cronológica
-    
+
     Validar ordem cronológica estrita dos dados CSV antes de iniciar simulação
     (prevenir look-ahead bias).
     """
@@ -337,7 +328,7 @@ class TestRF08ChronologicalValidation:
 
 class TestRF09BankruptcyCondition:
     """RF-09: Condição de Falência
-    
+
     Interromper simulação imediatamente quando saldo <= 0,
     emitindo log/aviso específico.
     """
@@ -370,7 +361,7 @@ class TestRF09BankruptcyCondition:
 
 class TestRF10CLIGUIParity:
     """RF-10: Paridade CLI = GUI
-    
+
     Toda funcionalidade disponível na GUI deve estar disponível na CLI
     como flags ou argumentos.
     """
@@ -412,7 +403,7 @@ class TestRF10CLIGUIParity:
 
 class TestRNF01ArchitecturalDecoupling:
     """RNF-01: Desacoplamento Arquitetural
-    
+
     O Core não deve importar nenhuma dependência de GUI ou CLI.
     A comunicação ocorre somente via interfaces/contratos definidos.
     """
@@ -450,7 +441,7 @@ class TestRNF01ArchitecturalDecoupling:
 
 class TestRNF02GUIResponsiveness:
     """RNF-02: Responsividade da GUI
-    
+
     Simulações devem rodar em thread/process separado.
     A tela principal não pode congelar durante processamento.
     """
@@ -483,7 +474,7 @@ class TestRNF02GUIResponsiveness:
 
 class TestRNF03Portability:
     """RNF-03: Portabilidade
-    
+
     O sistema deve ser empacotável via PyInstaller ou Docker,
     executando de forma autônoma no SO alvo.
     """
@@ -516,7 +507,7 @@ class TestRNF03Portability:
 
 class TestRNF04Extensibility:
     """RNF-04: Extensibilidade
-    
+
     Novas estratégias devem ser adicionadas apenas criando novas classes no domínio,
     sem alterar Core, GUI ou CLI (padrão Strategy + SOLID).
     """
@@ -554,9 +545,9 @@ class TestRNF04Extensibility:
 
 class TestRNF05TestCoverage:
     """RNF-05: Cobertura de Testes
-    
+
     Cobertura mínima de 80% (pytest-cov). Testes unitários e de integração obrigatórios.
-    
+
     NOTA: Este requisito é verificado pelo pipeline CI/CD, não por testes unitários.
     As funções abaixo documentam o objetivo sem testá-lo diretamente.
     """
@@ -584,7 +575,7 @@ class TestRNF05TestCoverage:
 
 class TestRNF06Documentation:
     """RNF-06: Documentação
-    
+
     Classes, métodos e funções devem conter docstrings completas
     (Google style ou NumPy style).
     """
@@ -617,10 +608,10 @@ class TestRNF06Documentation:
 
 class TestRNF07StaticQuality:
     """RNF-07: Qualidade Estática
-    
+
     Pipeline de linting (ruff ou flake8) deve passar sem erros
     antes de qualquer merge na branch main.
-    
+
     NOTA: Este requisito é verificado pelo pipeline CI/CD e ferramentas de linting,
     não por testes unitários.
     """
