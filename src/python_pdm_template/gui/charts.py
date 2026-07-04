@@ -85,7 +85,7 @@ class MplfinanceChart:
     """
 
     @staticmethod
-    def create_candlestick(data: pd.DataFrame) -> ft.Container:
+    def create_candlestick(_data: pd.DataFrame) -> ft.Container:
         """
         Criar gráfico candlestick com mplfinance.
 
@@ -111,8 +111,8 @@ class PlotlyChart:
 
     @staticmethod
     def create_capital_curve(
-        balances: list[float],
-        dates: Optional[list[str]] = None
+        _balances: list[float],
+        _dates: Optional[list[str]] = None
     ) -> ft.Container:
         """
         Criar gráfico de curva de capital com plotly.
@@ -132,8 +132,8 @@ class PlotlyChart:
 
     @staticmethod
     def create_returns_histogram(
-        returns: list[float],
-        labels: Optional[list[str]] = None
+        _returns: list[float],
+        _labels: Optional[list[str]] = None
     ) -> ft.Container:
         """
         Criar histograma de retornos com plotly.

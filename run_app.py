@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 """Script simples para rodar a aplicação."""
 
-import sys
-import os
-
-# Adiciona src ao path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
-# Importa e roda
 from python_pdm_template.gui.main_new import main
+import sys
+from pathlib import Path
 
-if __name__ == '__main__':
+sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
+
+if __name__ == "__main__":
     main()
