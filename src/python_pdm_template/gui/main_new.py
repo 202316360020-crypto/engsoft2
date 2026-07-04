@@ -17,6 +17,7 @@ class QuantInvestApp:
     """Aplicação principal da interface gráfica."""
 
     def __init__(self) -> None:
+        """Inicializa o estado da interface."""
         self.page: Optional[ft.Page] = None
         self.selected_file: Optional[str] = None
         self.strategy_value: str = "Buy and Hold"
@@ -353,7 +354,7 @@ class QuantInvestApp:
             ],
         )
 
-    def on_select_file_click(self, e: ft.ControlEvent) -> None:
+    def on_select_file_click(self, _event: ft.ControlEvent) -> None:
         """Simula a seleção de um CSV enquanto o Core não estiver integrado."""
         self.selected_file = "dados/ohlcv_exemplo.csv"
         if self.file_path_display is not None:
@@ -361,43 +362,24 @@ class QuantInvestApp:
             self.file_path_display.update()
         self._set_status("Arquivo carregado e pronto para simulação")
 
-    def on_strategy_changed(self, e: ft.ControlEvent) -> None:
+    def on_strategy_changed(self, _event: ft.ControlEvent) -> None:
         """Atualiza o texto de status quando a estratégia muda."""
         if self.strategy_dropdown is not None:
             self.strategy_value = str(self.strategy_dropdown.value)
             self._set_status(f"Estratégia selecionada: {self.strategy_value}")
 
-    def on_simulate_click(self, e: ft.ControlEvent) -> None:
+    def on_simulate_click(self, _event: ft.ControlEvent) -> None:
         """Executa a simulação mock da interface."""
         if self.selected_file is None:
             self.show_error("Selecione um arquivo CSV")
             return
 
-        if self.capital_input is None or not self.capital_input.value:
-            self.show_error("Informe um capital válido")
-            return
-
-        try:
-            capital = float(self.capital_input.value)
-        except ValueError:
-            self.show_error("Capital deve ser um número válido")
-            return
-
-        if capital <= 0:
-            self.show_error("Capital deve ser maior que zero")
+        capital = self._parse_capital_value()
+        if capital is None:
             return
 
         strategy = self.strategy_value
-        if strategy == "Buy and Hold":
-            total_return_pct = 12.4
-            win_rate_pct = 100.0
-            max_drawdown_pct = 4.2
-            total_trades = 1
-        else:
-            total_return_pct = 18.6
-            win_rate_pct = 66.7
-            max_drawdown_pct = 7.8
-            total_trades = 6
+        final_balance, total_return_pct, win_rate_pct, max_drawdown_pct, total_trades = self._build_mock_result(strategy, capital)
 
         final_balance = capital * (1 + total_return_pct / 100)
 
@@ -419,7 +401,7 @@ class QuantInvestApp:
         self._set_status(f"Simulação concluída com {strategy}")
         self._refresh_metrics()
 
-    def on_clear_click(self, e: ft.ControlEvent) -> None:
+    def on_clear_click(self, _event: ft.ControlEvent) -> None:
         """Limpa os campos e retorna a interface ao estado inicial."""
         self.selected_file = None
         self.strategy_value = "Buy and Hold"
@@ -468,6 +450,38 @@ class QuantInvestApp:
     def _refresh_metrics(self) -> None:
         if self.page is not None:
             self.page.update()
+
+    def _parse_capital_value(self) -> float | None:
+        if self.capital_input is None or not self.capital_input.value:
+            self.show_error("Informe um capital válido")
+            return None
+
+        try:
+            capital = float(self.capital_input.value)
+        except ValueError:
+            self.show_error("Capital deve ser um número válido")
+            return None
+
+        if capital <= 0:
+            self.show_error("Capital deve ser maior que zero")
+            return None
+
+        return capital
+
+    def _build_mock_result(self, strategy: str, capital: float) -> tuple[float, float, float, float, int]:
+        if strategy == "Buy and Hold":
+            total_return_pct = 12.4
+            win_rate_pct = 100.0
+            max_drawdown_pct = 4.2
+            total_trades = 1
+        else:
+            total_return_pct = 18.6
+            win_rate_pct = 66.7
+            max_drawdown_pct = 7.8
+            total_trades = 6
+
+        final_balance = capital * (1 + total_return_pct / 100)
+        return final_balance, total_return_pct, win_rate_pct, max_drawdown_pct, total_trades
 
 
 def main() -> None:
