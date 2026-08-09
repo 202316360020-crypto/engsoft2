@@ -26,7 +26,6 @@ class QuantInvestApp:
         self.file_picker: Optional[ft.FilePicker] = None
         self.file_text: Optional[ft.Text] = None
         self.status_text: Optional[ft.Text] = None
-        self.error_text: Optional[ft.Text] = None
         self.summary_text: Optional[ft.Text] = None
         self.operations_area: Optional[ft.Column] = None
         self.chart_area: Optional[ft.Container] = None
@@ -50,7 +49,8 @@ class QuantInvestApp:
         page.window_height = 940
 
         self.file_picker = ft.FilePicker()
-        page.services.append(self.file_picker)
+        self.file_picker.on_result = self._on_file_picker_result
+        page.overlay.append(self.file_picker)
         page.add(self._build_shell())
 
     def _build_shell(self) -> ft.Control:
@@ -64,11 +64,6 @@ class QuantInvestApp:
     def _build_sidebar(self) -> ft.Control:
         self.file_text = ft.Text("Nenhum arquivo selecionado", size=11, color=ThemeColors.TEXT_SECONDARY)
         self.status_text = ft.Text(self.status_value, size=11, color=ThemeColors.TEXT_SECONDARY)
-        self.error_text = ft.Text(
-            "Formato esperado: CSV com Date, Open, High, Low, Close e Volume.",
-            size=10,
-            color=ThemeColors.TEXT_SECONDARY,
-        )
         self.strategy_dropdown = ft.Dropdown(
             value=self.strategy_value,
             options=[
@@ -126,19 +121,6 @@ class QuantInvestApp:
                             controls=[
                                 ft.Text("Status", size=12, weight="bold", color=ThemeColors.TEXT_PRIMARY),
                                 self.status_text,
-                            ],
-                        ),
-                    ),
-                    ft.Container(
-                        padding=14,
-                        border_radius=14,
-                        bgcolor="#2a1111",
-                        border=ft.border.all(1, ThemeColors.RED_DARK),
-                        content=ft.Column(
-                            spacing=6,
-                            controls=[
-                                ft.Text("Erros", size=12, weight="bold", color=ThemeColors.RED),
-                                self.error_text,
                             ],
                         ),
                     ),
@@ -242,14 +224,13 @@ class QuantInvestApp:
             ),
         )
 
-    async def on_select_file_click(self, _event: ft.ControlEvent) -> None:
+    def on_select_file_click(self, _event: ft.ControlEvent) -> None:
         if self.file_picker is None:
             return
-        selected_files = await self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
-        paths = [file.path for file in selected_files or [] if file.path]
-        self._set_selected_files(paths)
+        self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
 
-    def _set_selected_files(self, paths: list[str]) -> None:
+    def _on_file_picker_result(self, event: ft.FilePickerResultEvent) -> None:
+        paths = [file.path for file in event.files or [] if file.path]
         self.selected_file_paths = paths
         if self.file_text is not None:
             if not paths:
@@ -430,11 +411,6 @@ class QuantInvestApp:
     def show_error(self, message: str) -> None:
         if self.page is None:
             return
-        if self.error_text is not None:
-            self.error_text.value = message
-            self.error_text.color = ThemeColors.RED
-        if self.status_text is not None:
-            self.status_text.value = f"Erro: {message}"
         self.page.snack_bar = ft.SnackBar(content=ft.Text(message, color=ThemeColors.RED), bgcolor=ThemeColors.SURFACE)
         self.page.snack_bar.open = True
         self.page.update()
@@ -443,9 +419,6 @@ class QuantInvestApp:
         self.status_value = message
         if self.status_text is not None:
             self.status_text.value = message
-        if self.error_text is not None:
-            self.error_text.value = "Formato esperado: CSV com Date, Open, High, Low, Close e Volume."
-            self.error_text.color = ThemeColors.TEXT_SECONDARY
         self._refresh_page()
 
     def _refresh_page(self) -> None:
