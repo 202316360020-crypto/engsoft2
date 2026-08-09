@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import date
 from pathlib import Path
 from typing import Optional
 
 import flet as ft
 import pandas as pd
 
-from ..core.parser import OHLCVParser
 from ..core.service import aggregate_runs, simulate_file, simulate_files
 from .charts import render_candlestick_chart, render_line_chart
-from .components import AccentPill, CustomButton, CustomCard, DateSelectorCard, ResultMetric, ThemeColors
+from .components import ThemeColors
 
 
 class QuantInvestApp:
@@ -28,21 +26,15 @@ class QuantInvestApp:
         self.file_picker: Optional[ft.FilePicker] = None
         self.file_text: Optional[ft.Text] = None
         self.status_text: Optional[ft.Text] = None
-        self.error_text: Optional[ft.Text] = None
         self.summary_text: Optional[ft.Text] = None
         self.operations_area: Optional[ft.Column] = None
         self.chart_area: Optional[ft.Container] = None
         self.equity_area: Optional[ft.Container] = None
-        self.error_container: Optional[ft.Container] = None
-        self.start_date_value: str | None = None
-        self.end_date_value: str | None = None
-        self.start_selector: Optional[DateSelectorCard] = None
-        self.end_selector: Optional[DateSelectorCard] = None
-        self.start_picker: Optional[ft.DatePicker] = None
-        self.end_picker: Optional[ft.DatePicker] = None
 
         self.metrics: dict[str, ft.Text] = {}
         self.capital_input: Optional[ft.TextField] = None
+        self.start_input: Optional[ft.TextField] = None
+        self.end_input: Optional[ft.TextField] = None
         self.short_input: Optional[ft.TextField] = None
         self.long_input: Optional[ft.TextField] = None
         self.strategy_dropdown: Optional[ft.Dropdown] = None
@@ -57,7 +49,8 @@ class QuantInvestApp:
         page.window_height = 940
 
         self.file_picker = ft.FilePicker()
-        page.services.append(self.file_picker)
+        self.file_picker.on_result = self._on_file_picker_result
+        page.overlay.append(self.file_picker)
         page.add(self._build_shell())
 
     def _build_shell(self) -> ft.Control:
@@ -71,11 +64,6 @@ class QuantInvestApp:
     def _build_sidebar(self) -> ft.Control:
         self.file_text = ft.Text("Nenhum arquivo selecionado", size=11, color=ThemeColors.TEXT_SECONDARY)
         self.status_text = ft.Text(self.status_value, size=11, color=ThemeColors.TEXT_SECONDARY)
-        self.error_text = ft.Text(
-            "",
-            size=10,
-            color=ThemeColors.TEXT_SECONDARY,
-        )
         self.strategy_dropdown = ft.Dropdown(
             value=self.strategy_value,
             options=[
@@ -88,58 +76,10 @@ class QuantInvestApp:
         )
         self.strategy_dropdown.on_change = self.on_strategy_changed
         self.capital_input = ft.TextField(label="Capital inicial", value="10000", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY, keyboard_type=ft.KeyboardType.NUMBER)
-        self.short_input = ft.TextField(
-            label="Curta",
-            value="9",
-            bgcolor=ThemeColors.SURFACE_LIGHT,
-            border_color=ThemeColors.BORDER_LIGHT,
-            color=ThemeColors.TEXT_PRIMARY,
-            keyboard_type=ft.KeyboardType.NUMBER,
-        )
-        self.long_input = ft.TextField(
-            label="Longa",
-            value="21",
-            bgcolor=ThemeColors.SURFACE_LIGHT,
-            border_color=ThemeColors.BORDER_LIGHT,
-            color=ThemeColors.TEXT_PRIMARY,
-            keyboard_type=ft.KeyboardType.NUMBER,
-        )
-        self.start_selector = DateSelectorCard("Data inicial", "Todo o período", on_click=self._open_start_picker)
-        self.end_selector = DateSelectorCard("Data final", "Todo o período", on_click=self._open_end_picker)
-        self.start_picker = ft.DatePicker(
-            help_text="Selecione a data inicial",
-            field_label_text="Data inicial",
-            field_hint_text="Escolha no calendário",
-            entry_mode=ft.DatePickerEntryMode.CALENDAR,
-            on_change=self._on_start_date_change,
-        )
-        self.end_picker = ft.DatePicker(
-            help_text="Selecione a data final",
-            field_label_text="Data final",
-            field_hint_text="Escolha no calendário",
-            entry_mode=ft.DatePickerEntryMode.CALENDAR,
-            on_change=self._on_end_date_change,
-        )
-
-        self.error_container = ft.Container(
-            padding=14,
-            border_radius=14,
-            bgcolor="#2a1111",
-            border=ft.Border(
-                top=ft.BorderSide(1, ThemeColors.RED_DARK),
-                right=ft.BorderSide(1, ThemeColors.RED_DARK),
-                bottom=ft.BorderSide(1, ThemeColors.RED_DARK),
-                left=ft.BorderSide(1, ThemeColors.RED_DARK),
-            ),
-            content=ft.Column(
-                spacing=6,
-                controls=[
-                    ft.Text("Erros", size=12, weight="bold", color=ThemeColors.RED),
-                    self.error_text,
-                ],
-            ),
-            visible=False,
-        )
+        self.start_input = ft.TextField(label="Data inicial", hint_text="YYYY-MM-DD", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY)
+        self.end_input = ft.TextField(label="Data final", hint_text="YYYY-MM-DD", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY)
+        self.short_input = ft.TextField(label="Janela curta", value="9", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY, keyboard_type=ft.KeyboardType.NUMBER)
+        self.long_input = ft.TextField(label="Janela longa", value="21", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY, keyboard_type=ft.KeyboardType.NUMBER)
 
         return ft.Container(
             width=330,
@@ -156,22 +96,22 @@ class QuantInvestApp:
                                 spacing=2,
                                 controls=[
                                     ft.Text("QuantInvest", size=20, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                                    ft.Text("Backtests com leitura clara e foco em decisão", size=11, color=ThemeColors.TEXT_SECONDARY),
+                                    ft.Text("Backtest e análise", size=11, color=ThemeColors.TEXT_SECONDARY),
                                 ],
                             ),
                         ],
                     ),
                     ft.Container(height=1, bgcolor=ThemeColors.BORDER),
-                    ft.Text("Preparação", size=13, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                    CustomButton("Selecionar CSV(s)", on_click=self.on_select_file_click, primary=True),
+                    ft.Text("Execução", size=13, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                    ft.ElevatedButton("Selecionar CSV(s)", bgcolor=ThemeColors.GREEN, color=ThemeColors.BACKGROUND, on_click=self.on_select_file_click),
                     self.file_text,
                     self.strategy_dropdown,
                     self.capital_input,
-                    ft.Text("Cruzamento de médias", size=11, weight="bold", color=ThemeColors.TEXT_SECONDARY),
                     ft.Row(spacing=10, controls=[ft.Container(expand=True, content=self.short_input), ft.Container(expand=True, content=self.long_input)]),
-                    ft.Row(spacing=10, controls=[ft.Container(expand=True, content=self.start_selector), ft.Container(expand=True, content=self.end_selector)]),
-                    CustomButton("Executar simulação", on_click=self.on_simulate_click, primary=True),
-                    CustomButton("Limpar campos", on_click=self.on_clear_click, primary=False),
+                    self.start_input,
+                    self.end_input,
+                    ft.ElevatedButton("Executar simulação", bgcolor=ThemeColors.GREEN, color=ThemeColors.BACKGROUND, on_click=self.on_simulate_click),
+                    ft.ElevatedButton("Limpar", bgcolor=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY, on_click=self.on_clear_click),
                     ft.Container(
                         padding=14,
                         border_radius=14,
@@ -184,7 +124,6 @@ class QuantInvestApp:
                             ],
                         ),
                     ),
-                    self.error_container,
                 ],
             ),
         )
@@ -225,13 +164,13 @@ class QuantInvestApp:
                     ft.Column(
                         spacing=4,
                         controls=[
-                            ft.Text("Backtest profissional", size=11, color=ThemeColors.TEXT_SECONDARY),
-                            ft.Text("QuantInvest Suite", size=28, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                            ft.Text("Simulação de estratégias, validação de CSV e leitura visual da performance em uma única tela.", size=12, color=ThemeColors.TEXT_SECONDARY),
+                            ft.Text("Backtest", size=11, color=ThemeColors.TEXT_SECONDARY),
+                            ft.Text("QuantInvest Suite", size=24, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                            ft.Text("Interface funcional para simular estratégias, validar CSV e visualizar a série de preços.", size=12, color=ThemeColors.TEXT_SECONDARY),
                         ],
                     ),
                     ft.Container(expand=True),
-                    AccentPill("Live Dashboard"),
+                    ft.Container(padding=10, border_radius=999, bgcolor="#13231d", content=ft.Text("Live Dashboard", size=11, weight="bold", color=ThemeColors.GREEN)),
                 ],
             ),
         )
@@ -240,16 +179,20 @@ class QuantInvestApp:
         return ft.Row(
             spacing=16,
             controls=[
-                self._metric_card("Saldo final", self.metrics["final_balance"], "Capital ao término da execução"),
-                self._metric_card("Retorno total", self.metrics["total_return"], "Evolução percentual do capital"),
-                self._metric_card("Trades lucrativos", self.metrics["win_rate"], "Operações vencedoras / operações fechadas"),
-                self._metric_card("Max drawdown", self.metrics["max_drawdown"], "Maior retração observada"),
+                self._metric_card("Saldo final", self.metrics["final_balance"], "Capital após a simulação"),
+                self._metric_card("Retorno total", self.metrics["total_return"], "Variação percentual"),
+                self._metric_card("Taxa de acerto", self.metrics["win_rate"], "Operações vencedoras"),
+                self._metric_card("Max drawdown", self.metrics["max_drawdown"], "Maior retração"),
             ],
         )
 
     def _metric_card(self, label: str, value_control: ft.Text, subtitle: str) -> ft.Control:
-        return CustomCard(
-            ft.Column(
+        return ft.Container(
+            expand=True,
+            padding=18,
+            border_radius=18,
+            bgcolor=ThemeColors.SURFACE,
+            content=ft.Column(
                 spacing=8,
                 controls=[
                     ft.Text(label, size=11, color=ThemeColors.TEXT_SECONDARY),
@@ -257,12 +200,14 @@ class QuantInvestApp:
                     ft.Text(subtitle, size=10, color=ThemeColors.TEXT_SECONDARY),
                 ],
             ),
-            expand=True,
         )
 
     def _build_results_panel(self) -> ft.Control:
-        return CustomCard(
-            ft.Column(
+        return ft.Container(
+            padding=18,
+            border_radius=18,
+            bgcolor=ThemeColors.SURFACE,
+            content=ft.Column(
                 spacing=10,
                 controls=[
                     ft.Row(
@@ -277,54 +222,16 @@ class QuantInvestApp:
                     self.operations_area,
                 ],
             ),
-            expand=True,
         )
 
-    async def on_select_file_click(self, _event: ft.ControlEvent) -> None:
+    def on_select_file_click(self, _event: ft.ControlEvent) -> None:
         if self.file_picker is None:
             return
-        selected_files = await self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
-        paths = [file.path for file in selected_files or [] if file.path]
-        self._set_selected_files(paths)
+        self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
 
-    def _open_start_picker(self, _event: ft.ControlEvent) -> None:
-        if self.page is not None and self.start_picker is not None:
-            self.page.show_dialog(self.start_picker)
-
-    def _open_end_picker(self, _event: ft.ControlEvent) -> None:
-        if self.page is not None and self.end_picker is not None:
-            self.page.show_dialog(self.end_picker)
-
-    def _on_start_date_change(self, _event: ft.ControlEvent) -> None:
-        if self.start_picker is None or self.start_picker.value is None:
-            return
-        value = self.start_picker.value
-        if hasattr(value, "date"):
-            value = value.date()
-        self.start_date_value = value.isoformat()
-        if self.start_selector is not None:
-            self.start_selector.set_value(self.start_date_value)
-        self._refresh_page()
-
-    def _on_end_date_change(self, _event: ft.ControlEvent) -> None:
-        if self.end_picker is None or self.end_picker.value is None:
-            return
-        value = self.end_picker.value
-        if hasattr(value, "date"):
-            value = value.date()
-        self.end_date_value = value.isoformat()
-        if self.end_selector is not None:
-            self.end_selector.set_value(self.end_date_value)
-        self._refresh_page()
-
-    def _set_selected_files(self, paths: list[str]) -> None:
+    def _on_file_picker_result(self, event: ft.FilePickerResultEvent) -> None:
+        paths = [file.path for file in event.files or [] if file.path]
         self.selected_file_paths = paths
-        self.start_date_value = None
-        self.end_date_value = None
-        if self.start_selector is not None:
-            self.start_selector.set_value(None)
-        if self.end_selector is not None:
-            self.end_selector.set_value(None)
         if self.file_text is not None:
             if not paths:
                 self.file_text.value = "Nenhum arquivo selecionado"
@@ -333,46 +240,7 @@ class QuantInvestApp:
             else:
                 self.file_text.value = f"{len(paths)} arquivos selecionados"
             self.file_text.update()
-
-        date_range = self._get_selected_files_date_range(paths)
-        if date_range is not None:
-            start_date, end_date = date_range
-            if self.file_text is not None and paths:
-                selected_label = self.file_text.value or "Arquivo selecionado"
-                self.file_text.value = f"{selected_label}\nIntervalo: {start_date} a {end_date}"
-                self.file_text.update()
-            self._set_status(
-                f"Arquivos prontos para simulação. Intervalo disponível: {start_date} a {end_date}."
-            )
-        else:
-            self._set_status("Arquivos prontos para simulação. Filtros de data reiniciados.")
-
-    def _get_selected_files_date_range(self, paths: list[str]) -> tuple[str, str] | None:
-        if not paths:
-            return None
-
-        parser = OHLCVParser()
-        min_date: pd.Timestamp | None = None
-        max_date: pd.Timestamp | None = None
-
-        for file_path in paths:
-            try:
-                frame = parser.parse(file_path)
-            except Exception:
-                continue
-
-            if frame.empty:
-                continue
-
-            current_min = pd.Timestamp(frame.index.min())
-            current_max = pd.Timestamp(frame.index.max())
-            min_date = current_min if min_date is None else min(min_date, current_min)
-            max_date = current_max if max_date is None else max(max_date, current_max)
-
-        if min_date is None or max_date is None:
-            return None
-
-        return min_date.date().isoformat(), max_date.date().isoformat()
+        self._set_status("Arquivos prontos para simulação")
 
     def on_strategy_changed(self, _event: ft.ControlEvent) -> None:
         if self.strategy_dropdown is not None and self.strategy_dropdown.value:
@@ -390,19 +258,14 @@ class QuantInvestApp:
         if capital is None or short_window is None or long_window is None:
             return
 
-        strategy_name = self.strategy_value
-        if self.strategy_dropdown is not None and self.strategy_dropdown.value:
-            strategy_name = str(self.strategy_dropdown.value)
-            self.strategy_value = strategy_name
-
-        start_date = self.start_date_value
-        end_date = self.end_date_value
+        start_date = self.start_input.value.strip() if self.start_input and self.start_input.value else None
+        end_date = self.end_input.value.strip() if self.end_input and self.end_input.value else None
 
         try:
             if len(self.selected_file_paths) == 1:
                 run = simulate_file(
                     self.selected_file_paths[0],
-                    strategy_name,
+                    self.strategy_value,
                     capital,
                     start_date=start_date,
                     end_date=end_date,
@@ -414,7 +277,7 @@ class QuantInvestApp:
             else:
                 runs = simulate_files(
                     self.selected_file_paths,
-                    strategy_name,
+                    self.strategy_value,
                     capital,
                     start_date=start_date,
                     end_date=end_date,
@@ -427,13 +290,7 @@ class QuantInvestApp:
             self._update_metrics(summary)
             self._update_visuals(runs[0].data, runs[0].result.equity_curve)
             self._update_summary(runs, summary, capital)
-            candle_count = len(runs[0].data)
-            if candle_count < 2:
-                self._set_status("Simulação concluída, mas o período filtrado retornou apenas 1 candle. Amplie as datas.")
-            elif strategy_name.strip().lower() == "buy and hold" and runs[0].result.total_trades <= 1:
-                self._set_status(f"Simulação concluída com {len(runs)} arquivo(s). Estratégia Buy and Hold gera 1 operação por arquivo.")
-            else:
-                self._set_status(f"Simulação concluída com {len(runs)} arquivo(s)")
+            self._set_status(f"Simulação concluída com {len(runs)} arquivo(s)")
         except Exception as exc:
             self.show_error(str(exc))
 
@@ -448,12 +305,10 @@ class QuantInvestApp:
             self.strategy_dropdown.value = self.strategy_value
         if self.capital_input is not None:
             self.capital_input.value = "10000"
-        self.start_date_value = None
-        self.end_date_value = None
-        if self.start_selector is not None:
-            self.start_selector.set_value(None)
-        if self.end_selector is not None:
-            self.end_selector.set_value(None)
+        if self.start_input is not None:
+            self.start_input.value = ""
+        if self.end_input is not None:
+            self.end_input.value = ""
         if self.short_input is not None:
             self.short_input.value = "9"
         if self.long_input is not None:
@@ -476,22 +331,20 @@ class QuantInvestApp:
         if summary is None:
             self.metrics["final_balance"].value = "R$ 0,00"
             self.metrics["total_return"].value = "0,00%"
-            self.metrics["win_rate"].value = "0/0"
+            self.metrics["win_rate"].value = "0,00%"
             self.metrics["max_drawdown"].value = "0,00%"
             self.metrics["final_balance"].color = ThemeColors.GREEN
             self.metrics["total_return"].color = ThemeColors.GREEN
             self.metrics["win_rate"].color = ThemeColors.GREEN
             self.metrics["max_drawdown"].color = ThemeColors.RED
         else:
-            winning_trades = sum(1 for operation in summary.operations if float(operation.get("profit", 0.0)) > 0)
-            closed_trades = summary.total_trades
             self.metrics["final_balance"].value = f"R$ {summary.final_balance:,.2f}"
             self.metrics["total_return"].value = f"{summary.total_return_pct:.2f}%"
-            self.metrics["win_rate"].value = f"{winning_trades}/{closed_trades}"
+            self.metrics["win_rate"].value = f"{summary.win_rate_pct:.2f}%"
             self.metrics["max_drawdown"].value = f"{summary.max_drawdown_pct:.2f}%"
             self.metrics["final_balance"].color = ThemeColors.GREEN if summary.final_balance >= 0 else ThemeColors.RED
             self.metrics["total_return"].color = ThemeColors.GREEN if summary.total_return_pct >= 0 else ThemeColors.RED
-            self.metrics["win_rate"].color = ThemeColors.GREEN if closed_trades > 0 and winning_trades / closed_trades >= 0.5 else ThemeColors.RED
+            self.metrics["win_rate"].color = ThemeColors.GREEN if summary.win_rate_pct >= 50 else ThemeColors.RED
             self.metrics["max_drawdown"].color = ThemeColors.RED
         self._refresh_page()
 
@@ -505,45 +358,21 @@ class QuantInvestApp:
         else:
             file_names = ", ".join(Path(run.file_path).name for run in runs)
             capital_display = f"R$ {capital:,.2f}" if capital is not None else "-"
-            self.summary_text.value = f"Execução concluída com {len(runs)} arquivo(s) | Estratégia: {self.strategy_value} | Capital inicial: {capital_display} | Arquivos: {file_names}"
+            self.summary_text.value = (
+                f"Arquivos: {file_names} | Estratégia: {self.strategy_value} | Capital inicial: {capital_display}"
+            )
             operation_lines = [
                 ft.Text(
-                    f"{index + 1}. {Path(run.file_path).name} — saldo final R$ {run.result.final_balance:,.2f} | trades {run.result.total_trades}",
+                    f"{index + 1}. {Path(run.file_path).name} -> saldo final R$ {run.result.final_balance:,.2f} | trades {run.result.total_trades}",
                     size=11,
                     color=ThemeColors.TEXT_SECONDARY,
                 )
                 for index, run in enumerate(runs)
             ]
-            first_run = runs[0]
-            if not first_run.data.empty:
-                period_start = first_run.data.index.min().date().isoformat()
-                period_end = first_run.data.index.max().date().isoformat()
-                operation_lines.append(
-                    ft.Text(
-                        f"Período analisado: {period_start} a {period_end} | candles {len(first_run.data)}",
-                        size=11,
-                        color=ThemeColors.TEXT_SECONDARY,
-                    )
-                )
-            if len(runs) == 1 and first_run.result.operations:
-                for operation in first_run.result.operations[:8]:
-                    entry_date = str(operation.get("entry_date") or "-")[:10]
-                    exit_date = str(operation.get("exit_date") or "-")[:10]
-                    entry_price = float(operation.get("entry_price", 0.0))
-                    exit_price = float(operation.get("exit_price", 0.0))
-                    profit = float(operation.get("profit", 0.0))
-                    profit_label = "lucro" if profit >= 0 else "prejuízo"
-                    operation_lines.append(
-                        ft.Text(
-                            f"{profit_label}: entrada {entry_date} (R$ {entry_price:,.2f}) -> saída {exit_date} (R$ {exit_price:,.2f}) | P/L R$ {profit:,.2f}",
-                            size=10,
-                            color=ThemeColors.GREEN if profit >= 0 else ThemeColors.RED,
-                        )
-                    )
             if summary is not None:
                 operation_lines.append(
                     ft.Text(
-                        f"Resumo consolidado — retorno {summary.total_return_pct:.2f}% | drawdown {summary.max_drawdown_pct:.2f}%",
+                        f"Resumo consolidado -> retorno {summary.total_return_pct:.2f}% | drawdown {summary.max_drawdown_pct:.2f}%",
                         size=11,
                         color=ThemeColors.TEXT_SECONDARY,
                     )
@@ -582,13 +411,6 @@ class QuantInvestApp:
     def show_error(self, message: str) -> None:
         if self.page is None:
             return
-        if self.error_container is not None:
-            self.error_container.visible = True
-        if self.error_text is not None:
-            self.error_text.value = message
-            self.error_text.color = ThemeColors.RED
-        if self.status_text is not None:
-            self.status_text.value = f"Erro: {message}"
         self.page.snack_bar = ft.SnackBar(content=ft.Text(message, color=ThemeColors.RED), bgcolor=ThemeColors.SURFACE)
         self.page.snack_bar.open = True
         self.page.update()
@@ -597,11 +419,6 @@ class QuantInvestApp:
         self.status_value = message
         if self.status_text is not None:
             self.status_text.value = message
-        if self.error_text is not None:
-            self.error_text.value = ""
-            self.error_text.color = ThemeColors.TEXT_SECONDARY
-        if self.error_container is not None:
-            self.error_container.visible = False
         self._refresh_page()
 
     def _refresh_page(self) -> None:
