@@ -1,33 +1,147 @@
-"""
-Este arquivo é o ponto de entrada principal do pacote `python_pdm_template`.
+"""Ponto de entrada em linha de comando da aplicação."""
 
-Função principal:
-- Define a função `main`, que é executada quando o pacote é chamado diretamente 
-  pela linha de comando.
+from __future__ import annotations
 
-Como construir e usar:
-1. Certifique-se de que o projeto está configurado corretamente com o PDM.
-2. Instale seu pacote no ambiente virtual usando:
-   ```bash
-    python -m pdm install
-    ```
-3. Execute o comando abaixo para rodar o pacote diretamente:
-   ```bash
-   python -m pdm run python src/NOME_DO_PROJETO/__main__.py
-   ```
-"""
+import argparse
+import json
+from dataclasses import asdict
+from pathlib import Path
+from typing import Sequence
 
-from python_pdm_template.utils import somar
+from .core.service import aggregate_runs, simulate_file, simulate_files
 
 
-def main():
-    """Função principal que exibe uma mensagem de boas-vindas."""
-    print("Hello, Python PDM Template!")
-    print()
-    print("A soma de 5+2 = ", somar(5, 2))
-    print()
+def build_parser() -> argparse.ArgumentParser:
+  """Cria o parser de argumentos da CLI."""
+
+  parser = argparse.ArgumentParser(description="QuantInvest Suite")
+  parser.add_argument(
+    "--file",
+    "-f",
+    nargs="+",
+    required=False,
+    help="Arquivo CSV OHLCV ou lista de arquivos para processamento em lote.",
+  )
+  parser.add_argument(
+    "--strategy",
+    "-s",
+    default="Buy and Hold",
+    choices=["Buy and Hold", "Cruzamento de Médias Móveis"],
+    help="Estratégia de investimento.",
+  )
+  parser.add_argument(
+    "--capital",
+    "-c",
+    type=float,
+    default=10_000.0,
+    help="Capital inicial.",
+  )
+  parser.add_argument("--start", help="Data inicial no formato YYYY-MM-DD.")
+  parser.add_argument("--end", help="Data final no formato YYYY-MM-DD.")
+  parser.add_argument(
+    "--short-window",
+    type=int,
+    default=9,
+    help="Janela curta para a estratégia de médias móveis.",
+  )
+  parser.add_argument(
+    "--long-window",
+    type=int,
+    default=21,
+    help="Janela longa para a estratégia de médias móveis.",
+  )
+  parser.add_argument(
+    "--output",
+    choices=["text", "json"],
+    default="text",
+    help="Formato da saída.",
+  )
+  return parser
 
 
-# Verifica se o arquivo está sendo executado diretamente
+def _format_currency(value: float) -> str:
+  return f"R$ {value:,.2f}"
+
+
+def _format_result(file_path: str, result) -> str:
+  lines = [
+    f"Arquivo: {Path(file_path).name}",
+    f"  Saldo final: {_format_currency(result.final_balance)}",
+    f"  Retorno total: {result.total_return_pct:.2f}%",
+    f"  Taxa de acerto: {result.win_rate_pct:.2f}%",
+    f"  Max drawdown: {result.max_drawdown_pct:.2f}%",
+    f"  Operações: {result.total_trades}",
+  ]
+  return "\n".join(lines)
+
+
+def run_cli(argv: Sequence[str] | None = None) -> int:
+  """Executa a CLI e retorna um código de saída."""
+
+  parser = build_parser()
+  args = parser.parse_args(argv)
+
+  if not args.file:
+    parser.error("Informe ao menos um arquivo com --file")
+
+  file_paths = [str(Path(path)) for path in args.file]
+
+  try:
+    if len(file_paths) == 1:
+      run = simulate_file(
+        file_paths[0],
+        args.strategy,
+        args.capital,
+        start_date=args.start,
+        end_date=args.end,
+        short_window=args.short_window,
+        long_window=args.long_window,
+      )
+      if args.output == "json":
+        print(json.dumps(asdict(run.result), ensure_ascii=False, indent=2, default=str))
+      else:
+        print(_format_result(file_paths[0], run.result))
+      return 0
+
+    runs = simulate_files(
+      file_paths,
+      args.strategy,
+      args.capital,
+      start_date=args.start,
+      end_date=args.end,
+      short_window=args.short_window,
+      long_window=args.long_window,
+    )
+    summary = aggregate_runs(runs, args.capital)
+
+    if args.output == "json":
+      payload = {
+        "files": [Path(path).name for path in file_paths],
+        "results": [asdict(run.result) for run in runs],
+        "summary": asdict(summary),
+      }
+      print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+    else:
+      for run in runs:
+        print(_format_result(run.file_path, run.result))
+        print()
+      print("Resumo do portfólio")
+      print(f"  Saldo final: {_format_currency(summary.final_balance)}")
+      print(f"  Retorno total: {summary.total_return_pct:.2f}%")
+      print(f"  Taxa de acerto: {summary.win_rate_pct:.2f}%")
+      print(f"  Max drawdown: {summary.max_drawdown_pct:.2f}%")
+      print(f"  Operações: {summary.total_trades}")
+    return 0
+  except Exception as exc:  # pragma: no cover - defensive CLI boundary
+    print(f"Erro: {exc}")
+    return 1
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+  """Ponto de entrada para `python -m python_pdm_template`."""
+
+  raise SystemExit(run_cli(argv))
+
+
 if __name__ == "__main__":
-    main()
+  main()

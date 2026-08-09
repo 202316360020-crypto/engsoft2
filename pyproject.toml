@@ -17,6 +17,10 @@ readme = "README.md"
 license-files = ["LICEN[CS]E*", "README.md"]
 classifiers = ["Programming Language :: Python :: 3"]
 
+[project.scripts]
+quantinvest = "python_pdm_template.__main__:main"
+quantinvest-gui = "python_pdm_template.gui.main_new:main"
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
