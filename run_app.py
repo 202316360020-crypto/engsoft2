@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-"""Script simples para rodar a aplicação."""
+"""Script simples para rodar a interface gráfica."""
 
-from python_pdm_template.gui.main_new import main
-import sys
 from pathlib import Path
+import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
+
+from python_pdm_template.gui.main_new import main
 
 
 if __name__ == "__main__":
