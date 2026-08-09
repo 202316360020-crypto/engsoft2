@@ -1,197 +1,176 @@
-"""Renderizacao visual da QuantInvest Suite com PNG para compatibilidade no executavel."""
+"""Renderização visual da QuantInvest Suite em SVG puro."""
 
 from __future__ import annotations
 
-from pathlib import Path
-import tempfile
-from typing import Optional
-import uuid
+import base64
+from html import escape
+from statistics import fmean
 
 import flet as ft
-import matplotlib
-
-matplotlib.use("Agg")
-
-import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 import pandas as pd
 
 from .components import ThemeColors
 
-_CHART_CACHE_DIR = Path(tempfile.gettempdir()) / "quantinvest_charts"
-_CHART_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-_CHART_DPI = 220
-_CHART_LINE_SIZE = (11.2, 3.6)
+
+def _svg_to_data_uri(svg: str) -> str:
+    payload = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{payload}"
 
 
-def _save_figure_to_temp_file(figure: plt.Figure, prefix: str) -> str:
-    file_path = _CHART_CACHE_DIR / f"{prefix}_{uuid.uuid4().hex}.png"
-    figure.savefig(file_path, dpi=_CHART_DPI, facecolor=ThemeColors.BACKGROUND, bbox_inches=None, pad_inches=0.10)
-    plt.close(figure)
-    return str(file_path)
+def _safe_min(values: list[float]) -> float:
+    return min(values) if values else 0.0
 
 
-def _chart_frame(title: str, subtitle: str, image_path: str | None, width: int, height: int) -> ft.Container:
-    if image_path is None:
-        body: ft.Control = ft.Container(
-            expand=True,
-            alignment=ft.alignment.Alignment(0, 0),
-            content=ft.Text(subtitle, size=11, color=ThemeColors.TEXT_SECONDARY, text_align=ft.TextAlign.CENTER),
-        )
-    else:
-        body = ft.Image(
-            src=image_path,
-            width=width - 24,
-            height=height - 54,
-            fit=ft.BoxFit.CONTAIN,
-            error_content=ft.Text("Falha ao renderizar grafico", size=10, color=ThemeColors.RED),
-        )
+def _safe_max(values: list[float]) -> float:
+    return max(values) if values else 1.0
 
+
+def _chart_frame(title: str, subtitle: str, body_svg: str, width: int, height: int) -> ft.Container:
+    image = ft.Image(src=_svg_to_data_uri(body_svg), expand=True)
     return ft.Container(
         width=width,
         height=height,
+        padding=16,
         border_radius=18,
         bgcolor=ThemeColors.SURFACE,
-        padding=12,
         content=ft.Column(
-            spacing=8,
+            spacing=10,
             controls=[
                 ft.Row(
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     controls=[
-                        ft.Text(title, size=14, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                        ft.Text(subtitle, size=10, color=ThemeColors.TEXT_SECONDARY),
+                        ft.Column(
+                            spacing=2,
+                            controls=[
+                                ft.Text(title, size=15, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                                ft.Text(subtitle, size=11, color=ThemeColors.TEXT_SECONDARY),
+                            ],
+                        ),
+                        ft.Container(expand=True),
                     ],
                 ),
-                body,
+                ft.Container(expand=True, content=image),
             ],
         ),
     )
 
 
-def _empty_state(title: str, subtitle: str) -> ft.Container:
-    return _chart_frame(title, subtitle, None, 900, 340)
+def render_candlestick_chart(data: pd.DataFrame, width: int = 900, height: int = 360) -> ft.Container:
+    """Renderiza um gráfico candlestick simplificado em SVG."""
 
+    if data.empty:
+        svg = f"""
+        <svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>
+          <rect width='100%' height='100%' rx='18' fill='{ThemeColors.BACKGROUND}'/>
+          <text x='50%' y='50%' fill='{ThemeColors.TEXT_SECONDARY}' font-size='18' text-anchor='middle'>Sem dados para exibir</text>
+        </svg>
+        """
+        return _chart_frame("Candlestick", "Aguardando arquivo CSV", svg, width, height)
 
-def _apply_axis_theme(axis: plt.Axes) -> None:
-    axis.set_facecolor(ThemeColors.SURFACE)
-    axis.grid(color=ThemeColors.BORDER, alpha=0.30, linewidth=0.8)
-    axis.tick_params(colors=ThemeColors.TEXT_SECONDARY, labelsize=8)
-    for spine in axis.spines.values():
-        spine.set_color(ThemeColors.BORDER)
+    frame = data.copy()
+    if not isinstance(frame.index, pd.DatetimeIndex):
+        frame.index = pd.to_datetime(frame.index)
 
+    opens = frame["Open"].astype(float).tolist()
+    highs = frame["High"].astype(float).tolist()
+    lows = frame["Low"].astype(float).tolist()
+    closes = frame["Close"].astype(float).tolist()
+    dates = [index.strftime("%d/%m") for index in frame.index]
 
-def render_line_chart(values: list[float], title: str, subtitle: str = "", width: int = 900, height: int = 340) -> ft.Container:
-    if not values:
-        return _empty_state(title, subtitle or "Nenhum valor para exibir.")
-    if len(values) == 1:
-        return _empty_state(title, subtitle or "Apenas 1 ponto no periodo. Amplie o intervalo para ver a curva.")
+    min_price = _safe_min(lows)
+    max_price = _safe_max(highs)
+    price_span = max(max_price - min_price, 1e-9)
 
-    figure, axis = plt.subplots(figsize=_CHART_LINE_SIZE, dpi=_CHART_DPI)
-    figure.patch.set_facecolor(ThemeColors.BACKGROUND)
-    _apply_axis_theme(axis)
-    figure.subplots_adjust(left=0.06, right=0.98, top=0.92, bottom=0.16)
+    chart_width = width - 40
+    chart_height = height - 80
+    top = 40
+    bottom = height - 30
+    left = 20
+    candle_space = chart_width / max(len(frame), 1)
+    candle_width = max(4, candle_space * 0.55)
 
-    x_values = list(range(len(values)))
-    axis.plot(x_values, values, color=ThemeColors.GREEN, linewidth=2.3)
-    axis.fill_between(x_values, values, min(values), color=ThemeColors.GREEN, alpha=0.14)
-    axis.set_xlim(0, len(values) - 1)
+    def y_from_price(price: float) -> float:
+        return top + (max_price - price) / price_span * chart_height
 
-    image_path = _save_figure_to_temp_file(figure, "equity")
-    return _chart_frame(title, subtitle, image_path, width, height)
-
-
-def render_candlestick_chart(frame: pd.DataFrame, width: int = 900, height: int = 340) -> ft.Container:
-    if frame is None or frame.empty:
-        return _empty_state("Candlestick", "Abra um CSV para visualizar o OHLCV.")
-    if len(frame) == 1:
-        return _empty_state("Candlestick", "Apenas 1 candle no periodo. Amplie as datas para visualizar o grafico.")
-
-    lower_columns = {column.lower(): column for column in frame.columns}
-    close_column = next((lower_columns[name] for name in ("close", "adj close", "adj_close") if name in lower_columns), None)
-    if close_column is None:
-        return _empty_state("Candlestick", "A serie precisa de uma coluna Close para o desenho.")
-
-    open_column = next((lower_columns[name] for name in ("open",) if name in lower_columns), close_column)
-    high_column = next((lower_columns[name] for name in ("high",) if name in lower_columns), close_column)
-    low_column = next((lower_columns[name] for name in ("low",) if name in lower_columns), close_column)
-
-    opens = frame[open_column].astype(float).tolist()
-    highs = frame[high_column].astype(float).tolist()
-    lows = frame[low_column].astype(float).tolist()
-    closes = frame[close_column].astype(float).tolist()
-
-    figure, axis = plt.subplots(figsize=_CHART_LINE_SIZE, dpi=_CHART_DPI)
-    figure.patch.set_facecolor(ThemeColors.BACKGROUND)
-    _apply_axis_theme(axis)
-    figure.subplots_adjust(left=0.06, right=0.98, top=0.92, bottom=0.16)
-
-    for idx, (open_value, high_value, low_value, close_value) in enumerate(zip(opens, highs, lows, closes, strict=False)):
-        color = ThemeColors.GREEN if close_value >= open_value else ThemeColors.RED
-        axis.vlines(idx, low_value, high_value, color=color, linewidth=1.0)
-        body_bottom = min(open_value, close_value)
-        body_height = max(abs(close_value - open_value), 0.04)
-        axis.add_patch(Rectangle((idx - 0.32, body_bottom), 0.64, body_height, facecolor=color, edgecolor=color, alpha=0.95))
-
-    axis.set_xlim(-1, len(closes))
-    axis.set_ylim(min(lows) * 0.995, max(highs) * 1.005)
-
-    image_path = _save_figure_to_temp_file(figure, "candles")
-    subtitle = f"{len(frame)} candles"
-    return _chart_frame("Candlestick", subtitle, image_path, width, height)
-
-
-class ChartPlaceholder(ft.Container):
-    def __init__(self, chart_type: str = "candlestick"):
-        if chart_type == "candlestick":
-            title, description = "Candlestick", "OHLCV da serie temporal"
-        elif chart_type == "capital_curve":
-            title, description = "Curva de Capital", "Evolucao do saldo durante a simulacao"
-        else:
-            title, description = "Grafico", "Visualizacao de dados"
-
-        super().__init__(
-            expand=True,
-            padding=20,
-            border_radius=18,
-            bgcolor=ThemeColors.SURFACE,
-            content=ft.Column(
-                spacing=12,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                alignment=ft.MainAxisAlignment.CENTER,
-                controls=[
-                    ft.Text(title, size=14, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                    ft.Text(description, size=11, color=ThemeColors.TEXT_SECONDARY, text_align=ft.TextAlign.CENTER),
-                ],
-            ),
+    grid_lines = []
+    for fraction in [0.0, 0.25, 0.5, 0.75, 1.0]:
+        y = top + chart_height * fraction
+        price_value = max_price - price_span * fraction
+        grid_lines.append(
+            f"<line x1='{left}' y1='{y:.1f}' x2='{width - 16}' y2='{y:.1f}' stroke='#28302f' stroke-width='1' />"
+        )
+        grid_lines.append(
+            f"<text x='24' y='{y - 4:.1f}' fill='{ThemeColors.TEXT_SECONDARY}' font-size='10'>{price_value:,.2f}</text>"
         )
 
+    candle_svg = []
+    for index, (open_price, high_price, low_price, close_price) in enumerate(zip(opens, highs, lows, closes, strict=False)):
+        x_center = left + candle_space * index + candle_space / 2
+        high_y = y_from_price(high_price)
+        low_y = y_from_price(low_price)
+        open_y = y_from_price(open_price)
+        close_y = y_from_price(close_price)
+        color = ThemeColors.GREEN if close_price >= open_price else ThemeColors.RED
+        body_top = min(open_y, close_y)
+        body_height = max(abs(close_y - open_y), 1.5)
 
-class MplfinanceChart:
-    @staticmethod
-    def create_candlestick(_data: pd.DataFrame) -> ft.Container:
-        return ChartPlaceholder("candlestick")
+        candle_svg.append(
+            f"<line x1='{x_center:.1f}' y1='{high_y:.1f}' x2='{x_center:.1f}' y2='{low_y:.1f}' stroke='{color}' stroke-width='1.5' />"
+        )
+        candle_svg.append(
+            f"<rect x='{x_center - candle_width / 2:.1f}' y='{body_top:.1f}' width='{candle_width:.1f}' height='{body_height:.1f}' rx='2' fill='{color}' opacity='0.85' />"
+        )
+        if index % max(len(frame) // 8, 1) == 0:
+            candle_svg.append(
+                f"<text x='{x_center:.1f}' y='{bottom:.1f}' fill='{ThemeColors.TEXT_SECONDARY}' font-size='10' text-anchor='middle'>{escape(dates[index])}</text>"
+            )
+
+    svg = f"""
+    <svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>
+      <rect width='100%' height='100%' rx='18' fill='{ThemeColors.BACKGROUND}'/>
+      {''.join(grid_lines)}
+      {''.join(candle_svg)}
+    </svg>
+    """
+    return _chart_frame("Candlestick", f"Último fechamento: {closes[-1]:,.2f}", svg, width, height)
 
 
-class PlotlyChart:
-    @staticmethod
-    def create_capital_curve(_balances: list[float], _dates: Optional[list[str]] = None) -> ft.Container:
-        return ChartPlaceholder("capital_curve")
+def render_line_chart(values: list[float], title: str, subtitle: str, width: int = 900, height: int = 260) -> ft.Container:
+    """Renderiza uma curva simples em SVG."""
 
-    @staticmethod
-    def create_returns_histogram(_returns: list[float], _labels: Optional[list[str]] = None) -> ft.Container:
-        return ChartPlaceholder("returns")
+    if not values:
+        svg = f"""
+        <svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>
+          <rect width='100%' height='100%' rx='18' fill='{ThemeColors.BACKGROUND}'/>
+          <text x='50%' y='50%' fill='{ThemeColors.TEXT_SECONDARY}' font-size='18' text-anchor='middle'>Sem dados para exibir</text>
+        </svg>
+        """
+        return _chart_frame(title, subtitle, svg, width, height)
 
+    min_value = _safe_min(values)
+    max_value = _safe_max(values)
+    span = max(max_value - min_value, 1e-9)
+    chart_width = width - 40
+    chart_height = height - 70
+    top = 26
+    left = 20
+    step = chart_width / max(len(values) - 1, 1)
 
-class ChartManager:
-    def __init__(self):
-        self.candlestick_chart = ChartPlaceholder("candlestick")
-        self.capital_curve_chart = ChartPlaceholder("capital_curve")
+    def y_from_value(value: float) -> float:
+        return top + (max_value - value) / span * chart_height
 
-    def update_candlestick(self, frame: pd.DataFrame) -> ft.Control:
-        self.candlestick_chart = render_candlestick_chart(frame)
-        return self.candlestick_chart
+    points = [f"{left + index * step:.1f},{y_from_value(value):.1f}" for index, value in enumerate(values)]
+    area_points = [f"{left:.1f},{height - 20}"] + points + [f"{left + chart_width:.1f},{height - 20}"]
+    mid_value = fmean(values)
 
-    def update_capital_curve(self, values: list[float], title: str = "Curva de Capital", subtitle: str = "") -> ft.Control:
-        self.capital_curve_chart = render_line_chart(values, title, subtitle)
-        return self.capital_curve_chart
+    svg = f"""
+    <svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>
+      <rect width='100%' height='100%' rx='18' fill='{ThemeColors.BACKGROUND}'/>
+      <line x1='{left}' y1='{top}' x2='{width - 16}' y2='{top}' stroke='#28302f' stroke-width='1'/>
+      <line x1='{left}' y1='{height - 20}' x2='{width - 16}' y2='{height - 20}' stroke='#28302f' stroke-width='1'/>
+      <polyline points="{' '.join(points)}" fill='none' stroke='{ThemeColors.GREEN}' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/>
+      <polygon points="{' '.join(area_points)}" fill='{ThemeColors.GREEN}' opacity='0.08'/>
+      <text x='{left}' y='18' fill='{ThemeColors.TEXT_SECONDARY}' font-size='10'>Média: {mid_value:,.2f}</text>
+      <text x='{width - 20}' y='{height - 6}' fill='{ThemeColors.TEXT_SECONDARY}' font-size='10' text-anchor='end'>Último: {values[-1]:,.2f}</text>
+    </svg>
+    """
+    return _chart_frame(title, subtitle, svg, width, height)
