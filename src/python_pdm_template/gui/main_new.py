@@ -20,7 +20,7 @@ class QuantInvestApp:
         self.page: Optional[ft.Page] = None
         self.selected_file_paths: list[str] = []
         self.strategy_value = "Buy and Hold"
-        self.status_value = "Selecione um CSV para começar"
+        self.status_value = "Pronto para carregar uma série OHLCV"
         self.current_run = None
 
         self.file_picker: Optional[ft.FilePicker] = None
@@ -49,7 +49,8 @@ class QuantInvestApp:
         page.window_height = 940
 
         self.file_picker = ft.FilePicker()
-        page.services.append(self.file_picker)
+        self.file_picker.on_result = self._on_file_picker_result
+        page.overlay.append(self.file_picker)
         page.add(self._build_shell())
 
     def _build_shell(self) -> ft.Control:
@@ -95,7 +96,7 @@ class QuantInvestApp:
                                 spacing=2,
                                 controls=[
                                     ft.Text("QuantInvest", size=20, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                                    ft.Text("Simulação de estratégias", size=11, color=ThemeColors.TEXT_SECONDARY),
+                                    ft.Text("Backtest e análise", size=11, color=ThemeColors.TEXT_SECONDARY),
                                 ],
                             ),
                         ],
@@ -136,8 +137,8 @@ class QuantInvestApp:
         }
 
         self.chart_area = ft.Container(expand=True, content=render_candlestick_chart(pd.DataFrame()))
-        self.equity_area = ft.Container(expand=True, content=render_line_chart([], "Curva de capital", "Evolução do saldo"))
-        self.summary_text = ft.Text("Abra um CSV para visualizar a execução.", size=11, color=ThemeColors.TEXT_SECONDARY)
+        self.equity_area = ft.Container(expand=True, content=render_line_chart([], "Curva de capital", "Resultado da estratégia"))
+        self.summary_text = ft.Text("Carregue um CSV para visualizar a execução.", size=11, color=ThemeColors.TEXT_SECONDARY)
         self.operations_area = ft.Column(spacing=6, controls=[])
 
         return ft.Container(
@@ -165,11 +166,11 @@ class QuantInvestApp:
                         controls=[
                             ft.Text("Backtest", size=11, color=ThemeColors.TEXT_SECONDARY),
                             ft.Text("QuantInvest Suite", size=24, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                            ft.Text("Simulação de estratégias, validação de CSV e visualização dos resultados.", size=12, color=ThemeColors.TEXT_SECONDARY),
+                            ft.Text("Interface funcional para simular estratégias, validar CSV e visualizar a série de preços.", size=12, color=ThemeColors.TEXT_SECONDARY),
                         ],
                     ),
                     ft.Container(expand=True),
-                    ft.Container(padding=10, border_radius=999, bgcolor="#13231d", content=ft.Text("Painel", size=11, weight="bold", color=ThemeColors.GREEN)),
+                    ft.Container(padding=10, border_radius=999, bgcolor="#13231d", content=ft.Text("Live Dashboard", size=11, weight="bold", color=ThemeColors.GREEN)),
                 ],
             ),
         )
@@ -223,11 +224,13 @@ class QuantInvestApp:
             ),
         )
 
-    async def on_select_file_click(self, _event: ft.ControlEvent) -> None:
+    def on_select_file_click(self, _event: ft.ControlEvent) -> None:
         if self.file_picker is None:
             return
-        files = await self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
-        paths = [file.path for file in files or [] if file.path]
+        self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
+
+    def _on_file_picker_result(self, event: ft.FilePickerResultEvent) -> None:
+        paths = [file.path for file in event.files or [] if file.path]
         self.selected_file_paths = paths
         if self.file_text is not None:
             if not paths:
@@ -314,7 +317,7 @@ class QuantInvestApp:
         self._update_metrics(None)
         self._update_visuals(pd.DataFrame(), [])
         self._update_summary([], None, None)
-        self._set_status("Selecione um CSV para começar")
+        self._set_status("Pronto para carregar uma série OHLCV")
         self._refresh_page()
 
     def _update_visuals(self, data, equity_curve: list[float]) -> None:
@@ -350,7 +353,7 @@ class QuantInvestApp:
             return
 
         if not runs:
-            self.summary_text.value = "Abra um CSV para visualizar a execução."
+            self.summary_text.value = "Carregue um CSV para visualizar a execução."
             self.operations_area.controls = []
         else:
             file_names = ", ".join(Path(run.file_path).name for run in runs)
