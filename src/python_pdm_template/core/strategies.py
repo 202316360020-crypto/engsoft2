@@ -127,7 +127,11 @@ class MovingAverageStrategy(BaseStrategy):
                 raise ValueError("Preços devem ser positivos.")
 
             if not in_position and not pd.isna(short_value) and not pd.isna(long_value):
-                crossed_up = short_value > long_value and (previous_short is None or previous_short <= previous_long)
+                crossed_up = short_value > long_value and (
+                    previous_short is None
+                    or previous_long is None
+                    or previous_short <= previous_long
+                )
                 if crossed_up:
                     position_shares = cash / price
                     entry_capital = cash
