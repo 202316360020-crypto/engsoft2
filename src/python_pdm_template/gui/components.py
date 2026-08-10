@@ -1,9 +1,6 @@
-"""
-Componentes reutilizáveis da GUI.
+"""Componentes reutilizáveis da GUI."""
 
-Widgets customizados com tema escuro e estilo financeiro para
-facilitar o desenvolvimento da interface.
-"""
+from __future__ import annotations
 
 import flet as ft
 
@@ -30,6 +27,24 @@ class ThemeColors:
     TEXT_SECONDARY = "#b0b0b0"
     BORDER = "#333333"
     BORDER_LIGHT = "#444444"
+    BORDER_HOVER = "#5a5a5a"
+    SURFACE_ELEVATED = "#232323"
+    SURFACE_HOVER = "#262626"
+    SHADOW = "#000000"
+
+
+def _border(color: str) -> ft.Border:
+    return ft.Border(
+        top=ft.BorderSide(1, color),
+        right=ft.BorderSide(1, color),
+        bottom=ft.BorderSide(1, color),
+        left=ft.BorderSide(1, color),
+    )
+
+
+def _notify(page: ft.Page | None) -> None:
+    if page is not None:
+        page.update()
 
 
 # ============================================================================
@@ -102,28 +117,37 @@ class CustomButton(ft.Container):
             primary: Se é botão primário (verde) ou secundário (cinza)
             **kwargs: Argumentos adicionais para ft.Container
         """
-        bg_color = ThemeColors.GREEN if primary else ThemeColors.BORDER_LIGHT
-        text_color = ThemeColors.BACKGROUND if primary else ThemeColors.TEXT_PRIMARY
+        self._primary = primary
+        self._default_bg = ThemeColors.GREEN if primary else ThemeColors.SURFACE_ELEVATED
+        self._hover_bg = ThemeColors.GREEN_DARK if primary else ThemeColors.SURFACE_HOVER
+        self._text_color = ThemeColors.BACKGROUND if primary else ThemeColors.TEXT_PRIMARY
 
         super().__init__(
             content=ft.Text(
                 text,
-                color=text_color,
+                color=self._text_color,
                 weight="bold",
                 size=13,
             ),
             on_click=on_click,
-            bgcolor=bg_color,
+            on_hover=self._on_hover,
+            bgcolor=self._default_bg,
             padding=14,
-            border_radius=6,
+            border_radius=12,
+            border=_border(ThemeColors.BORDER_LIGHT),
+            animate=ft.Animation(180, ft.AnimationCurve.EASE_OUT),
             **kwargs
         )
+
+    def _on_hover(self, event: ft.HoverEvent) -> None:
+        self.bgcolor = self._hover_bg if event.data == "true" else self._default_bg
+        self.update()
 
 
 class CustomCard(ft.Container):
     """Card customizado com tema escuro."""
 
-    def __init__(self, content: ft.Control, title: str | None = None, **kwargs):
+    def __init__(self, body: ft.Control, title: str | None = None, **kwargs):
         """
         Inicializar card customizado.
 
@@ -133,35 +157,45 @@ class CustomCard(ft.Container):
             **kwargs: Argumentos adicionais para ft.Container
         """
         # Se houver título, criar um card com header
+        self._base_bg = ThemeColors.SURFACE
+        self._hover_bg = ThemeColors.SURFACE_HOVER
+
         if title:
             header = ft.Container(
                 content=ft.Text(
                     title,
                     size=14,
                     weight="bold",
-                    color=ThemeColors.GREEN,
+                    color=ThemeColors.TEXT_PRIMARY,
                 ),
                 padding=12,
             )
 
             body = ft.Container(
-                content=content,
+                content=body,
                 padding=16,
             )
 
             card_content = ft.Column([header, body])
         else:
             card_content = ft.Container(
-                content=content,
+                content=body,
                 padding=16,
             )
 
         super().__init__(
             content=card_content,
-            bgcolor=ThemeColors.SURFACE,
-            border_radius=8,
+            bgcolor=self._base_bg,
+            border_radius=14,
+            border=_border(ThemeColors.BORDER),
+            on_hover=self._on_hover,
+            animate=ft.Animation(180, ft.AnimationCurve.EASE_OUT),
             **kwargs
         )
+
+    def _on_hover(self, event: ft.HoverEvent) -> None:
+        self.bgcolor = self._hover_bg if event.data == "true" else self._base_bg
+        self.update()
 
 
 class ResultMetric(ft.Container):
@@ -209,9 +243,9 @@ class ResultMetric(ft.Container):
                 ],
             ),
             bgcolor=ThemeColors.SURFACE,
-            border_radius=8,
+            border_radius=14,
             padding=16,
-            border=f"1px solid {ThemeColors.BORDER}",
+            border=_border(ThemeColors.BORDER),
         )
 
 
@@ -230,7 +264,76 @@ class SectionHeader(ft.Container):
                 title,
                 size=16,
                 weight="bold",
-                color=ThemeColors.GREEN,
+                color=ThemeColors.TEXT_PRIMARY,
             ),
             padding=12,
         )
+
+
+class AccentPill(ft.Container):
+    """Etiqueta pequena com resposta visual no hover."""
+
+    def __init__(self, text: str, accent: str = ThemeColors.GREEN):
+        self._base_bg = "#13231d"
+        self._hover_bg = "#173226"
+        self._accent = accent
+
+        super().__init__(
+            content=ft.Text(text, size=11, weight="bold", color=accent),
+            padding=10,
+            border_radius=999,
+            bgcolor=self._base_bg,
+            border=_border("#1d3d2e"),
+            on_hover=self._on_hover,
+            animate=ft.Animation(180, ft.AnimationCurve.EASE_OUT),
+        )
+
+    def _on_hover(self, event: ft.HoverEvent) -> None:
+        self.bgcolor = self._hover_bg if event.data == "true" else self._base_bg
+        self.update()
+
+
+class DateSelectorCard(ft.Container):
+    """Cartão compacto para seleção de data."""
+
+    def __init__(self, label: str, placeholder: str, on_click=None):
+        self._base_bg = ThemeColors.SURFACE_ELEVATED
+        self._hover_bg = ThemeColors.SURFACE_HOVER
+        self._label_text = ft.Text(label, size=11, color=ThemeColors.TEXT_SECONDARY)
+        self._value_text = ft.Text(placeholder, size=11, weight="bold", color=ThemeColors.TEXT_SECONDARY)
+
+        super().__init__(
+            content=ft.Column(
+                spacing=6,
+                controls=[
+                    ft.Row(
+                        spacing=6,
+                        controls=[
+                            ft.Icon(ft.Icons.CALENDAR_MONTH, size=16, color=ThemeColors.GREEN),
+                            self._label_text,
+                        ],
+                    ),
+                    self._value_text,
+                ],
+            ),
+            on_click=on_click,
+            on_hover=self._on_hover,
+            padding=12,
+            border_radius=14,
+            bgcolor=self._base_bg,
+            border=_border(ThemeColors.BORDER_LIGHT),
+            animate=ft.Animation(180, ft.AnimationCurve.EASE_OUT),
+        )
+
+    def set_value(self, value: str | None) -> None:
+        if value:
+            self._value_text.value = value
+            self._value_text.color = ThemeColors.TEXT_PRIMARY
+        else:
+            self._value_text.value = "Todo o período"
+            self._value_text.color = ThemeColors.TEXT_SECONDARY
+        self.update()
+
+    def _on_hover(self, event: ft.HoverEvent) -> None:
+        self.bgcolor = self._hover_bg if event.data == "true" else self._base_bg
+        self.update()

@@ -23,6 +23,29 @@ Ou use a CLI:
 .\.venv\Scripts\python.exe -m python_pdm_template --file caminho\para\arquivo.csv
 ```
 
+## Formato do CSV e parâmetros
+
+O arquivo de entrada precisa ter as colunas `Date`, `Open`, `High`, `Low`, `Close` e `Volume`, em ordem cronológica.
+
+Se você escolher a estratégia de cruzamento de médias móveis, os valores padrão `9` e `21` significam o tamanho das janelas de cálculo em períodos:
+
+- `9` = média curta, que reage mais rápido ao preço.
+- `21` = média longa, que suaviza mais o movimento e serve de referência.
+
+Os filtros de data também podem ser usados para limitar a simulação a um trecho específico da série; se você não definir nada, o sistema usa todo o CSV.
+
+## Gerar executável
+
+O projeto pode ser empacotado com PyInstaller para Windows. Para gerar um build local da GUI em uma pasta única e portátil, execute:
+
+```powershell
+.\build_portable.cmd
+```
+
+O pacote final fica em `portable\QuantInvest\` e o arquivo pronto para levar em pendrive fica em `portable\QuantInvest-portable.zip`.
+
+Use apenas o conteúdo de `portable\QuantInvest\` para executar a aplicação em outro computador. As pastas `pyinstaller-build\`, `release\` e `release-console\` são artefatos internos de geração e não fazem parte do pacote final.
+
 ## Executar o projeto
 
 1. **Rodar o projeto**:
