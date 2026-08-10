@@ -1,24 +1,52 @@
-"""Renderizacao visual da QuantInvest Suite em SVG puro."""
+"""Renderizacao visual da QuantInvest Suite com PNG para compatibilidade no executavel."""
 
 from __future__ import annotations
 
-import base64
-from html import escape
-from statistics import fmean
+from pathlib import Path
+import tempfile
 from typing import Optional
+import uuid
 
 import flet as ft
+import matplotlib
+
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import pandas as pd
 
 from .components import ThemeColors
 
+_CHART_CACHE_DIR = Path(tempfile.gettempdir()) / "quantinvest_charts"
+_CHART_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+_CHART_DPI = 220
+_CHART_LINE_SIZE = (11.2, 3.6)
 
-def _svg_to_data_uri(svg: str) -> str:
-    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
-    return f"data:image/svg+xml;base64,{encoded}"
+
+def _save_figure_to_temp_file(figure: plt.Figure, prefix: str) -> str:
+    file_path = _CHART_CACHE_DIR / f"{prefix}_{uuid.uuid4().hex}.png"
+    figure.savefig(file_path, dpi=_CHART_DPI, facecolor=ThemeColors.BACKGROUND, bbox_inches=None, pad_inches=0.10)
+    plt.close(figure)
+    return str(file_path)
 
 
-def _chart_frame(title: str, subtitle: str, svg: str, width: int, height: int) -> ft.Container:
+def _chart_frame(title: str, subtitle: str, image_path: str | None, width: int, height: int) -> ft.Container:
+    if image_path is None:
+        body: ft.Control = ft.Container(
+            expand=True,
+            alignment=ft.alignment.Alignment(0, 0),
+            content=ft.Text(subtitle, size=11, color=ThemeColors.TEXT_SECONDARY, text_align=ft.TextAlign.CENTER),
+        )
+    else:
+        body = ft.Image(
+            src=image_path,
+            width=width - 24,
+            height=height - 54,
+            fit=ft.BoxFit.CONTAIN,
+            error_content=ft.Text("Falha ao renderizar grafico", size=10, color=ThemeColors.RED),
+        )
+
     return ft.Container(
         width=width,
         height=height,
@@ -35,84 +63,54 @@ def _chart_frame(title: str, subtitle: str, svg: str, width: int, height: int) -
                         ft.Text(subtitle, size=10, color=ThemeColors.TEXT_SECONDARY),
                     ],
                 ),
-                ft.Image(src=_svg_to_data_uri(svg), width=width - 24, height=height - 54),
+                body,
             ],
         ),
     )
 
 
-def _placeholder_svg(title: str, subtitle: str, icon: str) -> str:
-    return f"""
-    <svg xmlns='http://www.w3.org/2000/svg' width='900' height='340' viewBox='0 0 900 340'>
-      <rect width='100%' height='100%' rx='18' fill='{ThemeColors.BACKGROUND}'/>
-      <rect x='18' y='18' width='864' height='304' rx='16' fill='{ThemeColors.SURFACE}' stroke='{ThemeColors.BORDER}'/>
-      <text x='450' y='130' text-anchor='middle' fill='{ThemeColors.GREEN}' font-size='54' font-family='Arial, sans-serif'>{escape(icon)}</text>
-      <text x='450' y='185' text-anchor='middle' fill='{ThemeColors.TEXT_PRIMARY}' font-size='24' font-family='Arial, sans-serif'>{escape(title)}</text>
-      <text x='450' y='220' text-anchor='middle' fill='{ThemeColors.TEXT_SECONDARY}' font-size='14' font-family='Arial, sans-serif'>{escape(subtitle)}</text>
-    </svg>
-    """
+def _empty_state(title: str, subtitle: str) -> ft.Container:
+    return _chart_frame(title, subtitle, None, 900, 340)
 
 
-def _empty_state(title: str, subtitle: str, icon: str) -> ft.Container:
-    return _chart_frame(title, subtitle, _placeholder_svg(title, subtitle, icon), 900, 340)
-
-
-def _line_points(values: list[float], width: int, height: int) -> tuple[list[str], list[str], float, float, float]:
-    if not values:
-        return [], [], 0.0, 0.0, 1.0
-
-    left, top, right, bottom = 26, 24, 16, 28
-    chart_width = max(width - left - right, 1)
-    chart_height = max(height - top - bottom, 1)
-    min_value = min(values)
-    max_value = max(values)
-    span = max(max_value - min_value, 1e-9)
-    step = chart_width / max(len(values) - 1, 1)
-
-    def y_from_value(value: float) -> float:
-        return top + (max_value - value) / span * chart_height
-
-    points = [f"{left + index * step:.1f},{y_from_value(value):.1f}" for index, value in enumerate(values)]
-    baseline = [f"{left:.1f},{height - bottom}"] + points + [f"{left + chart_width:.1f},{height - bottom}"]
-    return points, baseline, min_value, max_value, span
+def _apply_axis_theme(axis: plt.Axes) -> None:
+    axis.set_facecolor(ThemeColors.SURFACE)
+    axis.grid(color=ThemeColors.BORDER, alpha=0.30, linewidth=0.8)
+    axis.tick_params(colors=ThemeColors.TEXT_SECONDARY, labelsize=8)
+    for spine in axis.spines.values():
+        spine.set_color(ThemeColors.BORDER)
 
 
 def render_line_chart(values: list[float], title: str, subtitle: str = "", width: int = 900, height: int = 340) -> ft.Container:
     if not values:
-        return _empty_state(title, subtitle or "Nenhum valor para exibir.", "Line")
+        return _empty_state(title, subtitle or "Nenhum valor para exibir.")
+    if len(values) == 1:
+        return _empty_state(title, subtitle or "Apenas 1 ponto no periodo. Amplie o intervalo para ver a curva.")
 
-    points, baseline, _, _, _ = _line_points(values, width, height)
-    left, top, right, bottom = 26, 24, 16, 28
-    chart_width = max(width - left - right, 1)
-    chart_height = max(height - top - bottom, 1)
-    min_value = min(values)
-    max_value = max(values)
-    mid_value = fmean(values)
-    span = max(max_value - min_value, 1e-9)
+    figure, axis = plt.subplots(figsize=_CHART_LINE_SIZE, dpi=_CHART_DPI)
+    figure.patch.set_facecolor(ThemeColors.BACKGROUND)
+    _apply_axis_theme(axis)
+    figure.subplots_adjust(left=0.06, right=0.98, top=0.92, bottom=0.16)
 
-    svg = f"""
-    <svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>
-      <rect width='100%' height='100%' rx='18' fill='{ThemeColors.BACKGROUND}'/>
-      <rect x='0' y='0' width='{width}' height='{height}' rx='18' fill='{ThemeColors.SURFACE}'/>
-      <line x1='{left}' y1='{top}' x2='{width - right}' y2='{top}' stroke='{ThemeColors.BORDER}' stroke-width='1'/>
-      <line x1='{left}' y1='{height - bottom}' x2='{width - right}' y2='{height - bottom}' stroke='{ThemeColors.BORDER}' stroke-width='1'/>
-      <polygon points="{' '.join(baseline)}" fill='{ThemeColors.GREEN}' opacity='0.08'/>
-      <polyline points="{' '.join(points)}" fill='none' stroke='{ThemeColors.GREEN}' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/>
-      <text x='{left}' y='18' fill='{ThemeColors.TEXT_SECONDARY}' font-size='10' font-family='Arial, sans-serif'>Media: {mid_value:,.2f}</text>
-      <text x='{width - 20}' y='{height - 8}' fill='{ThemeColors.TEXT_SECONDARY}' font-size='10' text-anchor='end' font-family='Arial, sans-serif'>Ultimo: {values[-1]:,.2f}</text>
-    </svg>
-    """
-    return _chart_frame(title, subtitle, svg, width, height)
+    x_values = list(range(len(values)))
+    axis.plot(x_values, values, color=ThemeColors.GREEN, linewidth=2.3)
+    axis.fill_between(x_values, values, min(values), color=ThemeColors.GREEN, alpha=0.14)
+    axis.set_xlim(0, len(values) - 1)
+
+    image_path = _save_figure_to_temp_file(figure, "equity")
+    return _chart_frame(title, subtitle, image_path, width, height)
 
 
 def render_candlestick_chart(frame: pd.DataFrame, width: int = 900, height: int = 340) -> ft.Container:
     if frame is None or frame.empty:
-        return _empty_state("Candlestick", "Abra um CSV para visualizar o OHLCV.", "Candlestick")
+        return _empty_state("Candlestick", "Abra um CSV para visualizar o OHLCV.")
+    if len(frame) == 1:
+        return _empty_state("Candlestick", "Apenas 1 candle no periodo. Amplie as datas para visualizar o grafico.")
 
     lower_columns = {column.lower(): column for column in frame.columns}
     close_column = next((lower_columns[name] for name in ("close", "adj close", "adj_close") if name in lower_columns), None)
     if close_column is None:
-        return _empty_state("Candlestick", "A serie precisa de uma coluna Close para o desenho.", "Candlestick")
+        return _empty_state("Candlestick", "A serie precisa de uma coluna Close para o desenho.")
 
     open_column = next((lower_columns[name] for name in ("open",) if name in lower_columns), close_column)
     high_column = next((lower_columns[name] for name in ("high",) if name in lower_columns), close_column)
@@ -123,52 +121,34 @@ def render_candlestick_chart(frame: pd.DataFrame, width: int = 900, height: int 
     lows = frame[low_column].astype(float).tolist()
     closes = frame[close_column].astype(float).tolist()
 
-    left, top, right, bottom = 26, 24, 16, 28
-    chart_width = max(width - left - right, 1)
-    chart_height = max(height - top - bottom, 1)
-    min_value = min(lows + opens + closes)
-    max_value = max(highs + opens + closes)
-    span = max(max_value - min_value, 1e-9)
-    step = chart_width / max(len(closes), 1)
+    figure, axis = plt.subplots(figsize=_CHART_LINE_SIZE, dpi=_CHART_DPI)
+    figure.patch.set_facecolor(ThemeColors.BACKGROUND)
+    _apply_axis_theme(axis)
+    figure.subplots_adjust(left=0.06, right=0.98, top=0.92, bottom=0.16)
 
-    def y_from_value(value: float) -> float:
-        return top + (max_value - value) / span * chart_height
-
-    bars = []
-    for index, (open_value, high_value, low_value, close_value) in enumerate(zip(opens, highs, lows, closes)):
-        x = left + index * step + step / 2
-        candle_top = min(y_from_value(open_value), y_from_value(close_value))
-        candle_bottom = max(y_from_value(open_value), y_from_value(close_value))
-        candle_height = max(candle_bottom - candle_top, 1.0)
+    for idx, (open_value, high_value, low_value, close_value) in enumerate(zip(opens, highs, lows, closes, strict=False)):
         color = ThemeColors.GREEN if close_value >= open_value else ThemeColors.RED
-        bars.append(
-            f"<line x1='{x:.1f}' y1='{y_from_value(high_value):.1f}' x2='{x:.1f}' y2='{y_from_value(low_value):.1f}' stroke='{color}' stroke-width='2'/>"
-            f"<rect x='{x - step * 0.25:.1f}' y='{candle_top:.1f}' width='{step * 0.5:.1f}' height='{candle_height:.1f}' rx='2' fill='{color}' opacity='0.85'/>"
-        )
+        axis.vlines(idx, low_value, high_value, color=color, linewidth=1.0)
+        body_bottom = min(open_value, close_value)
+        body_height = max(abs(close_value - open_value), 0.04)
+        axis.add_patch(Rectangle((idx - 0.32, body_bottom), 0.64, body_height, facecolor=color, edgecolor=color, alpha=0.95))
 
-    svg = f"""
-    <svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'>
-      <rect width='100%' height='100%' rx='18' fill='{ThemeColors.BACKGROUND}'/>
-      <rect x='0' y='0' width='{width}' height='{height}' rx='18' fill='{ThemeColors.SURFACE}'/>
-      <line x1='{left}' y1='{top}' x2='{width - right}' y2='{top}' stroke='{ThemeColors.BORDER}' stroke-width='1'/>
-      <line x1='{left}' y1='{height - bottom}' x2='{width - right}' y2='{height - bottom}' stroke='{ThemeColors.BORDER}' stroke-width='1'/>
-      {''.join(bars)}
-      <text x='{left}' y='18' fill='{ThemeColors.TEXT_SECONDARY}' font-size='10' font-family='Arial, sans-serif'>Abertura: {opens[0]:,.2f}</text>
-      <text x='{width - 20}' y='{height - 8}' fill='{ThemeColors.TEXT_SECONDARY}' font-size='10' text-anchor='end' font-family='Arial, sans-serif'>Fechamento: {closes[-1]:,.2f}</text>
-    </svg>
-    """
+    axis.set_xlim(-1, len(closes))
+    axis.set_ylim(min(lows) * 0.995, max(highs) * 1.005)
+
+    image_path = _save_figure_to_temp_file(figure, "candles")
     subtitle = f"{len(frame)} candles"
-    return _chart_frame("Candlestick", subtitle, svg, width, height)
+    return _chart_frame("Candlestick", subtitle, image_path, width, height)
 
 
 class ChartPlaceholder(ft.Container):
     def __init__(self, chart_type: str = "candlestick"):
         if chart_type == "candlestick":
-            title, description, icon = "Candlestick", "OHLCV da serie temporal", "Chart"
+            title, description = "Candlestick", "OHLCV da serie temporal"
         elif chart_type == "capital_curve":
-            title, description, icon = "Curva de Capital", "Evolucao do saldo durante a simulacao", "Trend"
+            title, description = "Curva de Capital", "Evolucao do saldo durante a simulacao"
         else:
-            title, description, icon = "Grafico", "Visualizacao de dados", "Chart"
+            title, description = "Grafico", "Visualizacao de dados"
 
         super().__init__(
             expand=True,
@@ -180,7 +160,6 @@ class ChartPlaceholder(ft.Container):
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 alignment=ft.MainAxisAlignment.CENTER,
                 controls=[
-                    ft.Text(icon, size=42, color=ThemeColors.GREEN),
                     ft.Text(title, size=14, weight="bold", color=ThemeColors.TEXT_PRIMARY),
                     ft.Text(description, size=11, color=ThemeColors.TEXT_SECONDARY, text_align=ft.TextAlign.CENTER),
                 ],
