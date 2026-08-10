@@ -390,11 +390,6 @@ class QuantInvestApp:
         if capital is None or short_window is None or long_window is None:
             return
 
-        strategy_name = self.strategy_value
-        if self.strategy_dropdown is not None and self.strategy_dropdown.value:
-            strategy_name = str(self.strategy_dropdown.value)
-            self.strategy_value = strategy_name
-
         start_date = self.start_date_value
         end_date = self.end_date_value
 
@@ -402,7 +397,7 @@ class QuantInvestApp:
             if len(self.selected_file_paths) == 1:
                 run = simulate_file(
                     self.selected_file_paths[0],
-                    strategy_name,
+                    self.strategy_value,
                     capital,
                     start_date=start_date,
                     end_date=end_date,
@@ -414,7 +409,7 @@ class QuantInvestApp:
             else:
                 runs = simulate_files(
                     self.selected_file_paths,
-                    strategy_name,
+                    self.strategy_value,
                     capital,
                     start_date=start_date,
                     end_date=end_date,
@@ -430,7 +425,7 @@ class QuantInvestApp:
             candle_count = len(runs[0].data)
             if candle_count < 2:
                 self._set_status("Simulação concluída, mas o período filtrado retornou apenas 1 candle. Amplie as datas.")
-            elif strategy_name.strip().lower() == "buy and hold" and runs[0].result.total_trades <= 1:
+            elif self.strategy_value.strip().lower() == "buy and hold" and runs[0].result.total_trades <= 1:
                 self._set_status(f"Simulação concluída com {len(runs)} arquivo(s). Estratégia Buy and Hold gera 1 operação por arquivo.")
             else:
                 self._set_status(f"Simulação concluída com {len(runs)} arquivo(s)")
