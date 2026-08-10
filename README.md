@@ -1,43 +1,27 @@
-# python_pdm_template
+# QuantInvest Suite
 
-Este repositório é um template para projetos Python utilizando o [PDM](https://pdm.fming.dev/), uma ferramenta moderna de gerenciamento de pacotes e ambientes.
+Aplicação Python para simulação e análise de estratégias de investimento sobre séries OHLCV.
 
-## Como usar este template
+## Visão geral
 
-1. **Copiar o template**:
-   - No GitHub, clique no botão ``Use this template`` (ou ``Usar este template``) na página do repositório.
-   - Siga as instruções para criar um novo repositório baseado neste template.
+- Interface gráfica em Flet para selecionar CSVs, escolher estratégia e visualizar resultados.
+- CLI para executar backtests em arquivos individuais ou em lote.
+- Núcleo em `src/python_pdm_template/core/` com parser, estratégias e métricas.
+- Testes automatizados em `tests/` cobrindo validação, integração e regras de negócio.
 
-2. **Clonar o repositório**:
-   - Clone o novo repositório para sua máquina local:
-     ```bash
-     git clone https://github.com/seu-usuario/seu-repositorio.git
-     cd seu-repositorio
-     ```
+## Execução
 
-## Configuração do ambiente
+Com a virtualenv criada em `.venv`, execute a interface com:
 
-1. **Instalar o PDM**:
-   - Certifique-se de que o PDM está instalado. Caso não esteja, instale-o com o seguinte comando:
-     ```bash
-     python -m pip install pdm
-     ```
+```bash
+.\.venv\Scripts\python.exe run_app.py
+```
 
-2. **Instalar dependências**:
-   - Execute o comando abaixo para instalar as dependências do projeto:
-     ```bash
-     python -m pdm install
-     ```
+Ou use a CLI:
 
-3. **Adicionar novas dependências**:
-   - Para adicionar uma nova dependência ao projeto, use o comando:
-     ```bash
-     python -m pdm add nome-da-dependencia
-     ```
-   - Para adicionar dependências de desenvolvimento (instaladas apenas no ambiente de desenvolvimento - nunca em produção), utilize:
-     ```bash
-     python -m pdm add -d nome-da-dependencia
-     ```
+```bash
+.\.venv\Scripts\python.exe -m python_pdm_template --file caminho\para\arquivo.csv
+```
 
 ## Executar o projeto
 
@@ -64,29 +48,4 @@ Cada pasta ou arquivo acima tem um ``README.md`` explicando sua finalidade, como
 - As tarefas poderão ser **utilizadas para fins de avaliação na disciplina.** Assim, realize todas as tarefas propostas e envie suas respostas no nosso Google Classroom.
 ## Integrante
 Abner Azevedo - contribuição inicial
-## Status do Projeto
 
-- Testes automatizados implementados
-- Integração contínua (CI/CD) ativa
-- Critérios de aceitação definidos
-- Milestones em acompanhamento
-- Projeto em desenvolvimento
-
-## Status do Projeto
-
-- Testes automatizados implementados
-- Integração contínua (CI/CD) ativa
-- Critérios de aceitação definidos
-- Milestones acompanhados no GitHub
-- Projeto em desenvolvimento
-
-## Arquitetura Geral
-
-O projeto segue arquitetura desacoplada, dividida em:
-
-- Core (motor de simulação e regras de negócio)
-- CLI (interface de linha de comando)
-- GUI (interface gráfica)
-- CI/CD e testes automatizados
-
-Essa separação garante extensibilidade, manutenção e reutilização do núcleo do sistema.
