@@ -47,13 +47,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip  # Atualiza o pip
           pip install pdm                     # Instala o PDM
-          pdm install                        # Instala as dependências do projeto
+          pdm install --dev                   # Instala as dependências do projeto e do grupo dev
           pdm run pip check                  # Checa integridade dos pacotes
         shell: bash
 
       # TODO: Adicione aqui uma etapa para rodar o linter "ruff"
       - name: Rodar ruff
-        run: python -m pdm run ruff check src/
+        run: pdm run ruff check src/
       
               
 
