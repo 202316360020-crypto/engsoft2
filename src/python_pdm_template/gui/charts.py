@@ -64,7 +64,7 @@ def render_candlestick_chart(data: pd.DataFrame, width: int = 900, height: int =
           <text x='50%' y='50%' fill='{ThemeColors.TEXT_SECONDARY}' font-size='18' text-anchor='middle'>Sem dados para exibir</text>
         </svg>
         """
-        return _chart_frame("Candlestick", "Aguardando arquivo CSV", svg, width, height)
+        return _chart_frame("Candlestick", "Abra um CSV para começar", svg, width, height)
 
     frame = data.copy()
     if not isinstance(frame.index, pd.DatetimeIndex):
