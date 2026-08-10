@@ -49,8 +49,7 @@ class QuantInvestApp:
         page.window_height = 940
 
         self.file_picker = ft.FilePicker()
-        self.file_picker.on_result = self._on_file_picker_result
-        page.overlay.append(self.file_picker)
+        page.services.append(self.file_picker)
         page.add(self._build_shell())
 
     def _build_shell(self) -> ft.Control:
@@ -224,13 +223,14 @@ class QuantInvestApp:
             ),
         )
 
-    def on_select_file_click(self, _event: ft.ControlEvent) -> None:
+    async def on_select_file_click(self, _event: ft.ControlEvent) -> None:
         if self.file_picker is None:
             return
-        self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
+        selected_files = await self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
+        paths = [file.path for file in selected_files or [] if file.path]
+        self._set_selected_files(paths)
 
-    def _on_file_picker_result(self, event: ft.FilePickerResultEvent) -> None:
-        paths = [file.path for file in event.files or [] if file.path]
+    def _set_selected_files(self, paths: list[str]) -> None:
         self.selected_file_paths = paths
         if self.file_text is not None:
             if not paths:
