@@ -18,12 +18,25 @@ class QuantInvestApp:
 
     def __init__(self) -> None:
         self.page: Optional[ft.Page] = None
-        self.selected_file: Optional[str] = None
-        self.strategy_value: str = "Buy and Hold"
-        self.capital_value: str = "10000"
-        self.status_value: str = "Prévia visual pronta para integração com o Core"
+        self.selected_file_paths: list[str] = []
+        self.strategy_value = "Buy and Hold"
+        self.status_value = "Pronto para carregar uma série OHLCV"
+        self.current_run = None
 
-        self.file_path_display: Optional[ft.TextField] = None
+        self.file_picker: Optional[ft.FilePicker] = None
+        self.file_text: Optional[ft.Text] = None
+        self.status_text: Optional[ft.Text] = None
+        self.summary_text: Optional[ft.Text] = None
+        self.operations_area: Optional[ft.Column] = None
+        self.chart_area: Optional[ft.Container] = None
+        self.equity_area: Optional[ft.Container] = None
+
+        self.metrics: dict[str, ft.Text] = {}
+        self.capital_input: Optional[ft.TextField] = None
+        self.start_input: Optional[ft.TextField] = None
+        self.end_input: Optional[ft.TextField] = None
+        self.short_input: Optional[ft.TextField] = None
+        self.long_input: Optional[ft.TextField] = None
         self.strategy_dropdown: Optional[ft.Dropdown] = None
 
     def build_page(self, page: ft.Page) -> None:
@@ -35,13 +48,100 @@ class QuantInvestApp:
         page.window_width = 1500
         page.window_height = 940
 
+        self.file_picker = ft.FilePicker()
+        page.services.append(self.file_picker)
         page.add(self._build_shell())
 
     def _build_shell(self) -> ft.Control:
         return ft.Container(
             expand=True,
             bgcolor=ThemeColors.BACKGROUND,
-            padding=20,
+            padding=18,
+            content=ft.Row(spacing=18, controls=[self._build_sidebar(), self._build_main_area()]),
+        )
+
+    def _build_sidebar(self) -> ft.Control:
+        self.file_text = ft.Text("Nenhum arquivo selecionado", size=11, color=ThemeColors.TEXT_SECONDARY)
+        self.status_text = ft.Text(self.status_value, size=11, color=ThemeColors.TEXT_SECONDARY)
+        self.strategy_dropdown = ft.Dropdown(
+            value=self.strategy_value,
+            options=[
+                ft.dropdown.Option("Buy and Hold"),
+                ft.dropdown.Option("Cruzamento de Médias Móveis"),
+            ],
+            bgcolor=ThemeColors.SURFACE_LIGHT,
+            border_color=ThemeColors.BORDER_LIGHT,
+            color=ThemeColors.TEXT_PRIMARY,
+        )
+        self.strategy_dropdown.on_change = self.on_strategy_changed
+        self.capital_input = ft.TextField(label="Capital inicial", value="10000", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY, keyboard_type=ft.KeyboardType.NUMBER)
+        self.start_input = ft.TextField(label="Data inicial", hint_text="YYYY-MM-DD", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY)
+        self.end_input = ft.TextField(label="Data final", hint_text="YYYY-MM-DD", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY)
+        self.short_input = ft.TextField(label="Janela curta", value="9", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY, keyboard_type=ft.KeyboardType.NUMBER)
+        self.long_input = ft.TextField(label="Janela longa", value="21", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY, keyboard_type=ft.KeyboardType.NUMBER)
+
+        return ft.Container(
+            width=330,
+            padding=18,
+            border_radius=18,
+            bgcolor=ThemeColors.SURFACE,
+            content=ft.Column(
+                spacing=14,
+                controls=[
+                    ft.Row(
+                        controls=[
+                            ft.Container(width=40, height=40, border_radius=12, bgcolor=ThemeColors.GREEN, content=ft.Text("Q", color=ThemeColors.BACKGROUND, weight="bold", size=20)),
+                            ft.Column(
+                                spacing=2,
+                                controls=[
+                                    ft.Text("QuantInvest", size=20, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                                    ft.Text("Backtest e análise", size=11, color=ThemeColors.TEXT_SECONDARY),
+                                ],
+                            ),
+                        ],
+                    ),
+                    ft.Container(height=1, bgcolor=ThemeColors.BORDER),
+                    ft.Text("Execução", size=13, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                    ft.ElevatedButton("Selecionar CSV(s)", bgcolor=ThemeColors.GREEN, color=ThemeColors.BACKGROUND, on_click=self.on_select_file_click),
+                    self.file_text,
+                    self.strategy_dropdown,
+                    self.capital_input,
+                    ft.Row(spacing=10, controls=[ft.Container(expand=True, content=self.short_input), ft.Container(expand=True, content=self.long_input)]),
+                    self.start_input,
+                    self.end_input,
+                    ft.ElevatedButton("Executar simulação", bgcolor=ThemeColors.GREEN, color=ThemeColors.BACKGROUND, on_click=self.on_simulate_click),
+                    ft.ElevatedButton("Limpar", bgcolor=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY, on_click=self.on_clear_click),
+                    ft.Container(
+                        padding=14,
+                        border_radius=14,
+                        bgcolor="#111a16",
+                        content=ft.Column(
+                            spacing=6,
+                            controls=[
+                                ft.Text("Status", size=12, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                                self.status_text,
+                            ],
+                        ),
+                    ),
+                ],
+            ),
+        )
+
+    def _build_main_area(self) -> ft.Control:
+        self.metrics = {
+            "final_balance": ft.Text("R$ 0,00", size=24, weight="bold", color=ThemeColors.GREEN),
+            "total_return": ft.Text("0,00%", size=24, weight="bold", color=ThemeColors.GREEN),
+            "win_rate": ft.Text("0,00%", size=24, weight="bold", color=ThemeColors.GREEN),
+            "max_drawdown": ft.Text("0,00%", size=24, weight="bold", color=ThemeColors.RED),
+        }
+
+        self.chart_area = ft.Container(expand=True, content=render_candlestick_chart(pd.DataFrame()))
+        self.equity_area = ft.Container(expand=True, content=render_line_chart([], "Curva de capital", "Resultado da estratégia"))
+        self.summary_text = ft.Text("Carregue um CSV para visualizar a execução.", size=11, color=ThemeColors.TEXT_SECONDARY)
+        self.operations_area = ft.Column(spacing=6, controls=[])
+
+        return ft.Container(
+            expand=True,
             content=ft.Column(
                 spacing=16,
                 controls=[
@@ -65,16 +165,11 @@ class QuantInvestApp:
                         controls=[
                             ft.Text("Backtest", size=11, color=ThemeColors.TEXT_SECONDARY),
                             ft.Text("QuantInvest Suite", size=24, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                            ft.Text("Motor de backtesting e análise de estratégias", size=12, color=ThemeColors.TEXT_SECONDARY),
+                            ft.Text("Interface funcional para simular estratégias, validar CSV e visualizar a série de preços.", size=12, color=ThemeColors.TEXT_SECONDARY),
                         ],
                     ),
                     ft.Container(expand=True),
-                    ft.Container(
-                        padding=10,
-                        border_radius=999,
-                        bgcolor="#13231d",
-                        content=ft.Text("Dashboard", size=11, weight="bold", color=ThemeColors.GREEN),
-                    ),
+                    ft.Container(padding=10, border_radius=999, bgcolor="#13231d", content=ft.Text("Live Dashboard", size=11, weight="bold", color=ThemeColors.GREEN)),
                 ],
             ),
         )
@@ -116,192 +211,36 @@ class QuantInvestApp:
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Text("Candlestick", size=15, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                            ft.Container(
-                                expand=True,
-                                border_radius=16,
-                                bgcolor="#111a16",
-                                content=ft.Column(
-                                    alignment=ft.MainAxisAlignment.CENTER,
-                                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                    controls=[
-                                        ft.Text("🕯️", size=44, color=ThemeColors.GREEN),
-                                        ft.Text("Pré-visualização OHLCV", size=14, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                                        ft.Text("Espaço reservado para o gráfico financeiro.", size=11, color=ThemeColors.TEXT_SECONDARY, text_align=ft.TextAlign.CENTER),
-                                    ],
-                                ),
-                            ),
+                            ft.Text("Resumo da execução", size=15, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                            ft.Container(expand=True),
+                            ft.Text("Operações", size=11, color=ThemeColors.TEXT_SECONDARY),
                         ],
                     ),
-                ),
-            ],
+                    self.summary_text,
+                    ft.Container(height=1, bgcolor=ThemeColors.BORDER),
+                    self.operations_area,
+                ],
+            ),
         )
 
-    def _build_configuration_row(self) -> ft.Control:
-        self.file_path_display = ft.TextField(
-            label="Arquivo CSV",
-            value="Nenhum arquivo selecionado",
-            read_only=True,
-            bgcolor=ThemeColors.SURFACE_LIGHT,
-            border_color=ThemeColors.BORDER_LIGHT,
-            color=ThemeColors.TEXT_PRIMARY,
-        )
+    async def on_select_file_click(self, _event: ft.ControlEvent) -> None:
+        if self.file_picker is None:
+            return
+        selected_files = await self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
+        paths = [file.path for file in selected_files or [] if file.path]
+        self._set_selected_files(paths)
 
-        self.strategy_dropdown = ft.Dropdown(
-            label="Estratégia",
-            value=self.strategy_value,
-            options=[
-                ft.dropdown.Option("Buy and Hold"),
-                ft.dropdown.Option("Cruzamento de Médias Móveis"),
-            ],
-            bgcolor=ThemeColors.SURFACE_LIGHT,
-            border_color=ThemeColors.BORDER_LIGHT,
-            color=ThemeColors.TEXT_PRIMARY,
-        )
-        self.strategy_dropdown.on_change = self.on_strategy_changed
-
-        self.capital_input = ft.TextField(
-            label="Capital Inicial",
-            value=self.capital_value,
-            bgcolor=ThemeColors.SURFACE_LIGHT,
-            border_color=ThemeColors.BORDER_LIGHT,
-            color=ThemeColors.TEXT_PRIMARY,
-            keyboard_type=ft.KeyboardType.NUMBER,
-        )
-
-        self.results_summary = ft.Text(
-            "Nenhuma simulação executada ainda.",
-            size=11,
-            color=ThemeColors.TEXT_SECONDARY,
-        )
-
-        return ft.Row(
-            spacing=16,
-            controls=[
-                ft.Container(
-                    width=860,
-                    padding=18,
-                    border_radius=18,
-                    bgcolor=ThemeColors.SURFACE,
-                    content=ft.Column(
-                        spacing=14,
-                        controls=[
-                            ft.Text("Configuração da simulação", size=15, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                            ft.Row(
-                                spacing=12,
-                                controls=[
-                                    ft.Container(expand=True, content=self.file_path_display),
-                                    ft.Container(
-                                        width=170,
-                                        content=ft.ElevatedButton(
-                                            "Selecionar CSV",
-                                            bgcolor=ThemeColors.GREEN,
-                                            color=ThemeColors.BACKGROUND,
-                                            on_click=self.on_select_file_click,
-                                        ),
-                                    ),
-                                ],
-                            ),
-                            ft.Row(
-                                spacing=12,
-                                controls=[
-                                    ft.Container(expand=True, content=self.strategy_dropdown),
-                                    ft.Container(expand=True, content=self.capital_input),
-                                ],
-                            ),
-                            ft.Row(
-                                spacing=12,
-                                controls=[
-                                    ft.Container(
-                                        expand=True,
-                                        content=ft.ElevatedButton(
-                                            "Executar simulação",
-                                            bgcolor=ThemeColors.GREEN,
-                                            color=ThemeColors.BACKGROUND,
-                                            on_click=self.on_simulate_click,
-                                        ),
-                                    ),
-                                    ft.Container(
-                                        expand=True,
-                                        content=ft.ElevatedButton(
-                                            "Limpar",
-                                            bgcolor=ThemeColors.BORDER_LIGHT,
-                                            color=ThemeColors.TEXT_PRIMARY,
-                                            on_click=self.on_clear_click,
-                                        ),
-                                    ),
-                                ],
-                            ),
-                            ft.Container(
-                                padding=16,
-                                border_radius=16,
-                                bgcolor="#111a16",
-                                content=ft.Column(
-                                    spacing=8,
-                                    controls=[
-                                        ft.Text("Resumo", size=13, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                                        self.results_summary,
-                                    ],
-                                ),
-                            ),
-                        ],
-                    ),
-                ),
-                ft.Container(
-                    width=320,
-                    padding=18,
-                    border_radius=18,
-                    bgcolor=ThemeColors.SURFACE,
-                    content=ft.Column(
-                        spacing=12,
-                        controls=[
-                            ft.Text("Painel de contexto", size=15, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                            ft.Container(
-                                padding=16,
-                                border_radius=16,
-                                bgcolor="#111a16",
-                                content=ft.Column(
-                                    spacing=8,
-                                    controls=[
-                                        ft.Text("Integração prevista", size=12, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                                        ft.Text(
-                                            "A interface já está pronta para receber o Core sem acoplamento à lógica de negócio.",
-                                            size=11,
-                                            color=ThemeColors.TEXT_SECONDARY,
-                                        ),
-                                    ],
-                                ),
-                            ),
-                            ft.Container(
-                                padding=16,
-                                border_radius=16,
-                                bgcolor="#111a16",
-                                content=ft.Column(
-                                    spacing=8,
-                                    controls=[
-                                        ft.Text("Fluxo", size=12, weight="bold", color=ThemeColors.TEXT_PRIMARY),
-                                        ft.Text(
-                                            "1. Selecionar CSV\n2. Escolher estratégia\n3. Informar capital\n4. Executar",
-                                            size=11,
-                                            color=ThemeColors.TEXT_SECONDARY,
-                                        ),
-                                    ],
-                                ),
-                            ),
-                            self.status_text if self.status_text is not None else ft.Text(self.status_value, size=11, color=ThemeColors.TEXT_SECONDARY),
-                        ],
-                    ),
-                ),
-            ],
-        )
-
-    def on_select_file_click(self, _event: ft.ControlEvent) -> None:
-        """Simula a seleção de um CSV enquanto o Core não estiver integrado."""
-        self.selected_file = "dados/ohlcv_exemplo.csv"
-        if self.file_path_display is not None:
-            self.file_path_display.value = self.selected_file
-            self.file_path_display.update()
-        self._set_status("Arquivo carregado e pronto para simulação")
+    def _set_selected_files(self, paths: list[str]) -> None:
+        self.selected_file_paths = paths
+        if self.file_text is not None:
+            if not paths:
+                self.file_text.value = "Nenhum arquivo selecionado"
+            elif len(paths) == 1:
+                self.file_text.value = Path(paths[0]).name
+            else:
+                self.file_text.value = f"{len(paths)} arquivos selecionados"
+            self.file_text.update()
+        self._set_status("Arquivos prontos para simulação")
 
     def on_strategy_changed(self, _event: ft.ControlEvent) -> None:
         if self.strategy_dropdown is not None and self.strategy_dropdown.value:
@@ -366,21 +305,108 @@ class QuantInvestApp:
             self.strategy_dropdown.value = self.strategy_value
         if self.capital_input is not None:
             self.capital_input.value = "10000"
-        if self.results_summary is not None:
-            self.results_summary.value = "Nenhuma simulação executada ainda."
+        if self.start_input is not None:
+            self.start_input.value = ""
+        if self.end_input is not None:
+            self.end_input.value = ""
+        if self.short_input is not None:
+            self.short_input.value = "9"
+        if self.long_input is not None:
+            self.long_input.value = "21"
 
-        if self.metric_final_balance is not None:
-            self.metric_final_balance.value = "R$ 10.000,00"
-        if self.metric_return is not None:
-            self.metric_return.value = "0,00%"
-            self.metric_return.color = ThemeColors.GREEN
-        if self.metric_win_rate is not None:
-            self.metric_win_rate.value = "0,00%"
-        if self.metric_drawdown is not None:
-            self.metric_drawdown.value = "0,00%"
+        self._update_metrics(None)
+        self._update_visuals(pd.DataFrame(), [])
+        self._update_summary([], None, None)
+        self._set_status("Pronto para carregar uma série OHLCV")
+        self._refresh_page()
 
-        self._set_status("Prévia visual pronta para integração com o Core")
-        self._refresh_metrics()
+    def _update_visuals(self, data, equity_curve: list[float]) -> None:
+        if self.chart_area is not None:
+            self.chart_area.content = render_candlestick_chart(data)
+        if self.equity_area is not None:
+            self.equity_area.content = render_line_chart(equity_curve, "Curva de capital", "Evolução do saldo")
+        self._refresh_page()
+
+    def _update_metrics(self, summary) -> None:
+        if summary is None:
+            self.metrics["final_balance"].value = "R$ 0,00"
+            self.metrics["total_return"].value = "0,00%"
+            self.metrics["win_rate"].value = "0,00%"
+            self.metrics["max_drawdown"].value = "0,00%"
+            self.metrics["final_balance"].color = ThemeColors.GREEN
+            self.metrics["total_return"].color = ThemeColors.GREEN
+            self.metrics["win_rate"].color = ThemeColors.GREEN
+            self.metrics["max_drawdown"].color = ThemeColors.RED
+        else:
+            self.metrics["final_balance"].value = f"R$ {summary.final_balance:,.2f}"
+            self.metrics["total_return"].value = f"{summary.total_return_pct:.2f}%"
+            self.metrics["win_rate"].value = f"{summary.win_rate_pct:.2f}%"
+            self.metrics["max_drawdown"].value = f"{summary.max_drawdown_pct:.2f}%"
+            self.metrics["final_balance"].color = ThemeColors.GREEN if summary.final_balance >= 0 else ThemeColors.RED
+            self.metrics["total_return"].color = ThemeColors.GREEN if summary.total_return_pct >= 0 else ThemeColors.RED
+            self.metrics["win_rate"].color = ThemeColors.GREEN if summary.win_rate_pct >= 50 else ThemeColors.RED
+            self.metrics["max_drawdown"].color = ThemeColors.RED
+        self._refresh_page()
+
+    def _update_summary(self, runs, summary, capital: float | None) -> None:
+        if self.summary_text is None or self.operations_area is None:
+            return
+
+        if not runs:
+            self.summary_text.value = "Carregue um CSV para visualizar a execução."
+            self.operations_area.controls = []
+        else:
+            file_names = ", ".join(Path(run.file_path).name for run in runs)
+            capital_display = f"R$ {capital:,.2f}" if capital is not None else "-"
+            self.summary_text.value = (
+                f"Arquivos: {file_names} | Estratégia: {self.strategy_value} | Capital inicial: {capital_display}"
+            )
+            operation_lines = [
+                ft.Text(
+                    f"{index + 1}. {Path(run.file_path).name} -> saldo final R$ {run.result.final_balance:,.2f} | trades {run.result.total_trades}",
+                    size=11,
+                    color=ThemeColors.TEXT_SECONDARY,
+                )
+                for index, run in enumerate(runs)
+            ]
+            if summary is not None:
+                operation_lines.append(
+                    ft.Text(
+                        f"Resumo consolidado -> retorno {summary.total_return_pct:.2f}% | drawdown {summary.max_drawdown_pct:.2f}%",
+                        size=11,
+                        color=ThemeColors.TEXT_SECONDARY,
+                    )
+                )
+            self.operations_area.controls = operation_lines
+        self._refresh_page()
+
+    def _parse_float_field(self, field: Optional[ft.TextField], error_message: str) -> float | None:
+        if field is None or not field.value:
+            self.show_error(error_message)
+            return None
+        try:
+            value = float(field.value.replace(",", "."))
+        except ValueError:
+            self.show_error(error_message)
+            return None
+        if value <= 0:
+            self.show_error(error_message)
+            return None
+        return value
+
+    def _parse_int_field(self, field: Optional[ft.TextField], error_message: str) -> int | None:
+        if field is None or not field.value:
+            self.show_error(error_message)
+            return None
+        try:
+            value = int(field.value)
+        except ValueError:
+            self.show_error(error_message)
+            return None
+        if value <= 0:
+            self.show_error(error_message)
+            return None
+        return value
 
     def show_error(self, message: str) -> None:
         if self.page is None:
