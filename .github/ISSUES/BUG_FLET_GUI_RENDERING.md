@@ -83,3 +83,5 @@ The problem likely stems from:
 - Exit code 0 on execution
 - Window is interactive (can close, resize, focus)
 - Only issue is component visibility/rendering
+
+## commit
