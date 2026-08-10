@@ -30,4 +30,3 @@ Ou use a CLI:
 - `tests/`: suíte de testes e fixtures.
 - `pyproject.toml`: dependências, scripts e configuração de ferramentas.
 
-teste commi

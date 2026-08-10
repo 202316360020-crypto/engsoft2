@@ -1,6 +1,6 @@
 # Informações do Grupo
 
-Este projeto está sendo desenvolvido como atividade avaliativa.
+Este projeto está sendo desenvolvido como atividade avaliativa de engsoft2.
 
 ## Integrantes
 

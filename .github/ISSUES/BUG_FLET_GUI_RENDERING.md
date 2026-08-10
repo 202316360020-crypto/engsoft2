@@ -84,4 +84,4 @@ The problem likely stems from:
 - Window is interactive (can close, resize, focus)
 - Only issue is component visibility/rendering
 
-## commit
+
