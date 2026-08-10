@@ -23,9 +23,13 @@ Ou use a CLI:
 .\.venv\Scripts\python.exe -m python_pdm_template --file caminho\para\arquivo.csv
 ```
 
-<<<<<<< HEAD
 ## Estrutura principal
-=======
+
+- `src/python_pdm_template/core/`: parser, estratégias, métricas e serviços de simulação.
+- `src/python_pdm_template/gui/`: dashboard Flet e componentes visuais.
+- `tests/`: suíte de testes e fixtures.
+- `pyproject.toml`: dependências, scripts e configuração de ferramentas.
+
 ## Formato do CSV e parâmetros
 
 O arquivo de entrada precisa ter as colunas `Date`, `Open`, `High`, `Low`, `Close` e `Volume`, em ordem cronológica.
@@ -50,10 +54,4 @@ O pacote final fica em `portable\QuantInvest\` e o arquivo pronto para levar em 
 Use apenas o conteúdo de `portable\QuantInvest\` para executar a aplicação em outro computador. As pastas `pyinstaller-build\`, `release\` e `release-console\` são artefatos internos de geração e não fazem parte do pacote final.
 
 ## Executar o projeto
->>>>>>> c983cf6 (Fix GUI rendering and portable build)
-
-- `src/python_pdm_template/core/`: parser, estratégias, métricas e serviços de simulação.
-- `src/python_pdm_template/gui/`: dashboard Flet e componentes visuais.
-- `tests/`: suíte de testes e fixtures.
-- `pyproject.toml`: dependências, scripts e configuração de ferramentas.
 
