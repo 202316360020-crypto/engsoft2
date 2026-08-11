@@ -107,6 +107,7 @@ select = [
     "C90", # erros de complexidade ciclomática (funcoes/métodos com muitas linhas de código, muitos loops, etc)
     "C4", # erros de list/dict comprehensions (performance ruim)
 ]
+preview = true
 
 ignore=[
     "B017", # assert ExceptionType is not specific enough
