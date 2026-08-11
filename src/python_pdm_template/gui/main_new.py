@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -9,11 +10,14 @@ import flet as ft
 import pandas as pd
 
 from ..core.parser import OHLCVParser
-from ..core.service import aggregate_runs, simulate_file, simulate_files
+from ..core.service import SimulationOptions, aggregate_runs, simulate_file, simulate_files
 from .charts import render_candlestick_chart, render_line_chart
 from .components import AccentPill, CustomButton, CustomCard, DateSelectorCard, ThemeColors
 
 
+DEFAULT_STRATEGY = "Buy and Hold"
+DEFAULT_NO_FILE_TEXT = "Nenhum arquivo selecionado"
+DEFAULT_PERCENTAGE_TEXT = "0,00%"
 MINIMUM_CANDLES_FOR_ALERT = 2
 WIN_RATE_THRESHOLD = 0.5
 
@@ -58,8 +62,6 @@ class QuantInvestApp:
         page.bgcolor = ThemeColors.BACKGROUND
         page.theme_mode = ft.ThemeMode.DARK
         page.padding = 0
-        page.window_width = 1500
-        page.window_height = 940
 
         self.file_picker = ft.FilePicker()
         page.services.append(self.file_picker)
@@ -74,7 +76,7 @@ class QuantInvestApp:
         )
 
     def _build_sidebar(self) -> ft.Control:
-        self.file_text = ft.Text("Nenhum arquivo selecionado", size=11, color=ThemeColors.TEXT_SECONDARY)
+        self.file_text = ft.Text(DEFAULT_NO_FILE_TEXT, size=11, color=ThemeColors.TEXT_SECONDARY)
         self.status_text = ft.Text(self.status_value, size=11, color=ThemeColors.TEXT_SECONDARY)
         self.error_text = ft.Text(
             "",
@@ -84,14 +86,14 @@ class QuantInvestApp:
         self.strategy_dropdown = ft.Dropdown(
             value=self.strategy_value,
             options=[
-                ft.dropdown.Option("Buy and Hold"),
+                ft.dropdown.Option(DEFAULT_STRATEGY),
                 ft.dropdown.Option("Cruzamento de Médias Móveis"),
             ],
             bgcolor=ThemeColors.SURFACE_LIGHT,
             border_color=ThemeColors.BORDER_LIGHT,
             color=ThemeColors.TEXT_PRIMARY,
+            on_select=lambda _: self.on_strategy_changed(),
         )
-        self.strategy_dropdown.on_change = self.on_strategy_changed
         self.capital_input = ft.TextField(label="Capital inicial", value="10000", bgcolor=ThemeColors.SURFACE_LIGHT, border_color=ThemeColors.BORDER_LIGHT, color=ThemeColors.TEXT_PRIMARY, keyboard_type=ft.KeyboardType.NUMBER)
         self.short_input = ft.TextField(
             label="Curta",
@@ -139,7 +141,7 @@ class QuantInvestApp:
             content=ft.Column(
                 spacing=6,
                 controls=[
-                    ft.Text("Erros", size=12, weight="bold", color=ThemeColors.RED),
+                    ft.Text("Erros", size=12, weight=ft.FontWeight.BOLD, color=ThemeColors.RED),
                     self.error_text,
                 ],
             ),
@@ -156,23 +158,23 @@ class QuantInvestApp:
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Container(width=40, height=40, border_radius=12, bgcolor=ThemeColors.GREEN, content=ft.Text("Q", color=ThemeColors.BACKGROUND, weight="bold", size=20)),
+                            ft.Container(width=40, height=40, border_radius=12, bgcolor=ThemeColors.GREEN, content=ft.Text("Q", color=ThemeColors.BACKGROUND, weight=ft.FontWeight.BOLD, size=20)),
                             ft.Column(
                                 spacing=2,
                                 controls=[
-                                    ft.Text("QuantInvest", size=20, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                                    ft.Text("QuantInvest", size=20, weight=ft.FontWeight.BOLD, color=ThemeColors.TEXT_PRIMARY),
                                     ft.Text("Backtests com leitura clara e foco em decisão", size=11, color=ThemeColors.TEXT_SECONDARY),
                                 ],
                             ),
                         ],
                     ),
                     ft.Container(height=1, bgcolor=ThemeColors.BORDER),
-                    ft.Text("Preparação", size=13, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                    ft.Text("Preparação", size=13, weight=ft.FontWeight.BOLD, color=ThemeColors.TEXT_PRIMARY),
                     CustomButton("Selecionar CSV(s)", on_click=self.on_select_file_click, primary=True),
                     self.file_text,
                     self.strategy_dropdown,
                     self.capital_input,
-                    ft.Text("Cruzamento de médias", size=11, weight="bold", color=ThemeColors.TEXT_SECONDARY),
+                    ft.Text("Cruzamento de médias", size=11, weight=ft.FontWeight.BOLD, color=ThemeColors.TEXT_SECONDARY),
                     ft.Row(spacing=10, controls=[ft.Container(expand=True, content=self.short_input), ft.Container(expand=True, content=self.long_input)]),
                     ft.Row(spacing=10, controls=[ft.Container(expand=True, content=self.start_selector), ft.Container(expand=True, content=self.end_selector)]),
                     CustomButton("Executar simulação", on_click=self.on_simulate_click, primary=True),
@@ -184,7 +186,7 @@ class QuantInvestApp:
                         content=ft.Column(
                             spacing=6,
                             controls=[
-                                ft.Text("Status", size=12, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                                ft.Text("Status", size=12, weight=ft.FontWeight.BOLD, color=ThemeColors.TEXT_PRIMARY),
                                 self.status_text,
                             ],
                         ),
@@ -196,10 +198,10 @@ class QuantInvestApp:
 
     def _build_main_area(self) -> ft.Control:
         self.metrics = {
-            "final_balance": ft.Text("R$ 0,00", size=24, weight="bold", color=ThemeColors.GREEN),
-            "total_return": ft.Text("0,00%", size=24, weight="bold", color=ThemeColors.GREEN),
-            "win_rate": ft.Text("0,00%", size=24, weight="bold", color=ThemeColors.GREEN),
-            "max_drawdown": ft.Text("0,00%", size=24, weight="bold", color=ThemeColors.RED),
+            "final_balance": ft.Text("R$ 0,00", size=24, weight=ft.FontWeight.BOLD, color=ThemeColors.GREEN),
+            "total_return": ft.Text(DEFAULT_PERCENTAGE_TEXT, size=24, weight=ft.FontWeight.BOLD, color=ThemeColors.GREEN),
+            "win_rate": ft.Text(DEFAULT_PERCENTAGE_TEXT, size=24, weight=ft.FontWeight.BOLD, color=ThemeColors.GREEN),
+            "max_drawdown": ft.Text(DEFAULT_PERCENTAGE_TEXT, size=24, weight=ft.FontWeight.BOLD, color=ThemeColors.RED),
         }
 
         self.chart_area = ft.Container(expand=True, content=render_candlestick_chart(pd.DataFrame()))
@@ -237,7 +239,7 @@ class QuantInvestApp:
                         spacing=4,
                         controls=[
                             ft.Text("Backtest profissional", size=11, color=ThemeColors.TEXT_SECONDARY),
-                            ft.Text("QuantInvest Suite", size=28, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                            ft.Text("QuantInvest Suite", size=28, weight=ft.FontWeight.BOLD, color=ThemeColors.TEXT_PRIMARY),
                             ft.Text("Simulação de estratégias, validação de CSV e leitura visual da performance em uma única tela.", size=12, color=ThemeColors.TEXT_SECONDARY),
                         ],
                     ),
@@ -289,7 +291,7 @@ class QuantInvestApp:
                 controls=[
                     ft.Row(
                         controls=[
-                            ft.Text("Resumo da execução", size=15, weight="bold", color=ThemeColors.TEXT_PRIMARY),
+                            ft.Text("Resumo da execução", size=15, weight=ft.FontWeight.BOLD, color=ThemeColors.TEXT_PRIMARY),
                             ft.Container(expand=True),
                             ft.Text("Operações", size=11, color=ThemeColors.TEXT_SECONDARY),
                         ],
@@ -318,22 +320,22 @@ class QuantInvestApp:
         if self.page is not None and self.end_picker is not None:
             self.page.show_dialog(self.end_picker)
 
-    def _on_start_date_change(self, _event: ft.ControlEvent) -> None:
+    def _on_start_date_change(self, _event: ft.Event) -> None:
         if self.start_picker is None or self.start_picker.value is None:
             return
         value = self.start_picker.value
-        if hasattr(value, "date"):
+        if isinstance(value, datetime):
             value = value.date()
         self.start_date_value = value.isoformat()
         if self.start_selector is not None:
             self.start_selector.set_value(self.start_date_value)
         self._refresh_page()
 
-    def _on_end_date_change(self, _event: ft.ControlEvent) -> None:
+    def _on_end_date_change(self, _event: ft.Event) -> None:
         if self.end_picker is None or self.end_picker.value is None:
             return
         value = self.end_picker.value
-        if hasattr(value, "date"):
+        if isinstance(value, datetime):
             value = value.date()
         self.end_date_value = value.isoformat()
         if self.end_selector is not None:
@@ -407,10 +409,9 @@ class QuantInvestApp:
 
         return min_date.date().isoformat(), max_date.date().isoformat()
 
-    def on_strategy_changed(self, _event: ft.ControlEvent) -> None:
+    def on_strategy_changed(self) -> None:
         """Atualiza o valor da estratégia selecionada pelo usuário."""
-        if self.strategy_dropdown is not None and self.strategy_dropdown.value:
-            self.strategy_value = str(self.strategy_dropdown.value)
+self.strategy_value = str(self.strategy_dropdown.value)
             self._set_status(f"Estratégia selecionada: {self.strategy_value}")
 
     def on_simulate_click(self, _event: ft.ControlEvent) -> None:
@@ -427,30 +428,22 @@ class QuantInvestApp:
 
         start_date = self.start_date_value
         end_date = self.end_date_value
+        options = SimulationOptions(
+            strategy_name=self.strategy_value,
+            capital=capital,
+            start_date=start_date,
+            end_date=end_date,
+            short_window=short_window,
+            long_window=long_window,
+        )
 
         try:
             if len(self.selected_file_paths) == 1:
-                run = simulate_file(
-                    self.selected_file_paths[0],
-                    self.strategy_value,
-                    capital,
-                    start_date=start_date,
-                    end_date=end_date,
-                    short_window=short_window,
-                    long_window=long_window,
-                )
+                run = simulate_file(self.selected_file_paths[0], options)
                 runs = [run]
                 summary = run.result
             else:
-                runs = simulate_files(
-                    self.selected_file_paths,
-                    self.strategy_value,
-                    capital,
-                    start_date=start_date,
-                    end_date=end_date,
-                    short_window=short_window,
-                    long_window=long_window,
-                )
+                runs = simulate_files(self.selected_file_paths, options)
                 summary = aggregate_runs(runs, capital)
 
             self.current_run = runs[0]
@@ -470,11 +463,11 @@ class QuantInvestApp:
     def on_clear_click(self, _event: ft.ControlEvent) -> None:
         """Limpa o formulário e redefine o estado para o valor inicial."""
         self.selected_file_paths = []
-        self.strategy_value = "Buy and Hold"
+        self.strategy_value = DEFAULT_STRATEGY
         self.current_run = None
 
         if self.file_text is not None:
-            self.file_text.value = "Nenhum arquivo selecionado"
+            self.file_text.value = DEFAULT_NO_FILE_TEXT
         if self.strategy_dropdown is not None:
             self.strategy_dropdown.value = self.strategy_value
         if self.capital_input is not None:
@@ -621,9 +614,7 @@ class QuantInvestApp:
             self.error_text.color = ThemeColors.RED
         if self.status_text is not None:
             self.status_text.value = f"Erro: {message}"
-        self.page.snack_bar = ft.SnackBar(content=ft.Text(message, color=ThemeColors.RED), bgcolor=ThemeColors.SURFACE)
-        self.page.snack_bar.open = True
-        self.page.update()
+        self._refresh_page()
 
     def _set_status(self, message: str) -> None:
         self.status_value = message
