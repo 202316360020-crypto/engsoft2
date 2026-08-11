@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -12,7 +11,7 @@ import pandas as pd
 from ..core.parser import OHLCVParser
 from ..core.service import aggregate_runs, simulate_file, simulate_files
 from .charts import render_candlestick_chart, render_line_chart
-from .components import AccentPill, CustomButton, CustomCard, DateSelectorCard, ResultMetric, ThemeColors
+from .components import AccentPill, CustomButton, CustomCard, DateSelectorCard, ThemeColors
 
 
 class QuantInvestApp:

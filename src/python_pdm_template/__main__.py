@@ -13,7 +13,6 @@ from .core.service import aggregate_runs, simulate_file, simulate_files
 
 def build_parser() -> argparse.ArgumentParser:
   """Cria o parser de argumentos da CLI."""
-
   parser = argparse.ArgumentParser(description="QuantInvest Suite")
   parser.add_argument(
     "--file",
@@ -77,7 +76,6 @@ def _format_result(file_path: str, result) -> str:
 
 def run_cli(argv: Sequence[str] | None = None) -> int:
   """Executa a CLI e retorna um código de saída."""
-
   parser = build_parser()
   args = parser.parse_args(argv)
 
@@ -139,7 +137,6 @@ def run_cli(argv: Sequence[str] | None = None) -> int:
 
 def main(argv: Sequence[str] | None = None) -> None:
   """Ponto de entrada para `python -m python_pdm_template`."""
-
   raise SystemExit(run_cli(argv))
 
 

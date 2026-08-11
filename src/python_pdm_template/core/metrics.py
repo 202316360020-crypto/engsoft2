@@ -5,7 +5,6 @@ from __future__ import annotations
 
 def calculate_max_drawdown(equity_curve: list[float]) -> float:
     """Calcula o maior drawdown percentual da curva de capital."""
-
     if not equity_curve:
         raise ValueError("A curva de capital não pode ser vazia.")
 
@@ -13,20 +12,17 @@ def calculate_max_drawdown(equity_curve: list[float]) -> float:
     max_drawdown = 0.0
 
     for value in equity_curve:
-        if value > peak:
-            peak = value
+        peak = max(peak, value)
         if peak <= 0:
             continue
         drawdown = (peak - value) / peak * 100
-        if drawdown > max_drawdown:
-            max_drawdown = drawdown
+        max_drawdown = max(max_drawdown, drawdown)
 
     return max_drawdown
 
 
 def calculate_win_rate(operations: list[dict]) -> float:
     """Calcula a taxa de acerto em porcentagem."""
-
     if not operations:
         raise ValueError("A lista de operações não pode ser vazia.")
 
@@ -36,7 +32,6 @@ def calculate_win_rate(operations: list[dict]) -> float:
 
 def calculate_return(initial_capital: float, final_balance: float) -> float:
     """Calcula o retorno percentual total."""
-
     if initial_capital <= 0:
         raise ValueError("O capital inicial deve ser estritamente positivo.")
 
