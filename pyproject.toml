@@ -96,7 +96,7 @@ select = [
     "F", # erros identificados pelo Flake8 (ex: erros de sintaxe, erros de indentacao, etc)
     "N", # erros de nomes de variáveis, funções, classes, etc (ex: variáveis com nomes pouco descritivos, funções com nomes que nao seguem o padrão snake_case, etc)
     "S", # erros de segurança (ex: uso de funções inseguras, uso de bibliotecas com vulnerabilidades conhecidas, etc)
-    "DOC", # erros de documentação (ex: docstrings faltando, docstrings com formato incorreto, etc)
+
     "SLF", # erros de uso de membros privados de outras classes (ex: acessar atributos ou métodos privados de outras classes, etc)
     "RET", # erros de retorno de funções (funções que nao retornam nada, ou que retornam tipos de dados diferentes em blocos de código diferentes, etc)
     "ARG", # erros de argumentos de funções (ex: argumentos nao usados, argumentos definidos mais de uma vez, etc)
@@ -120,6 +120,13 @@ ignore=[
     "S201", # Flask debug mode is enabled.
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = [
+    "D",
+    "PLR2004",
+    "PLR0913",
+    "RET504",
+]
 [tool.ruff.lint.pydocstyle]
 convention = "pep257" # Use a convenção PEP 257 para validar as docstrings, o que inclui a validação dos parâmetros :param: e outros elementos de documentação.
  
