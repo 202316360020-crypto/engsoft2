@@ -86,7 +86,8 @@ exclude = [
     ".mypy_cache",
     ".pytest_cache",
 ]
-
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["D", "DOC"]
 [tool.ruff.lint]
 select = [
     "A", # erros de colisao com nomes existentes (ex: variaveis com mesmo nome de variaveis built-in do Python, variaveis com mesmo nome de modulos do Python, etc)
