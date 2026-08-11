@@ -411,8 +411,8 @@ class QuantInvestApp:
 
     def on_strategy_changed(self) -> None:
         """Atualiza o valor da estratégia selecionada pelo usuário."""
-self.strategy_value = str(self.strategy_dropdown.value)
-            self._set_status(f"Estratégia selecionada: {self.strategy_value}")
+        self.strategy_value = str(self.strategy_dropdown.value)
+        self._set_status(f"Estratégia selecionada: {self.strategy_value}")
 
     def on_simulate_click(self, _event: ft.ControlEvent) -> None:
         """Inicia a simulação para os arquivos selecionados e exibe os resultados."""
