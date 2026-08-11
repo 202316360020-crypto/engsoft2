@@ -274,6 +274,7 @@ class AccentPill(ft.Container):
     """Etiqueta pequena com resposta visual no hover."""
 
     def __init__(self, text: str, accent: str = ThemeColors.GREEN):
+        """Inicializa o pill com um estilo de destaque."""
         self._base_bg = "#13231d"
         self._hover_bg = "#173226"
         self._accent = accent
@@ -297,6 +298,7 @@ class DateSelectorCard(ft.Container):
     """Cartão compacto para seleção de data."""
 
     def __init__(self, label: str, placeholder: str, on_click=None):
+        """Inicializa o cartão de seleção de datas."""
         self._base_bg = ThemeColors.SURFACE_ELEVATED
         self._hover_bg = ThemeColors.SURFACE_HOVER
         self._label_text = ft.Text(label, size=11, color=ThemeColors.TEXT_SECONDARY)
@@ -326,6 +328,7 @@ class DateSelectorCard(ft.Container):
         )
 
     def set_value(self, value: str | None) -> None:
+        """Define o valor exibido no cartão de seleção de datas."""
         if value:
             self._value_text.value = value
             self._value_text.color = ThemeColors.TEXT_PRIMARY

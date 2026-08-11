@@ -108,26 +108,6 @@ select = [
 ]
 preview = true
 
-ignore=[
-    "B017", # assert ExceptionType is not specific enough
-    "B021", # f-string docstrings
-    "D", # relax docstring rules for this project
-    "DOC", # relax documentation checks
-    "D210", # No whitespace allowed surrounding docstring text
-    "D212", # Multi-line docstring summary should start at the first line
-    "PLR0913", # too many arguments in functions
-    "PLR0914", # too many local variables
-    "PLR0915", # too many statements in functions
-    "PLR0917", # too many positional arguments
-    "PLR2004", # magic values allowed in this project
-    "PLR6301", # methods that could be static/class methods
-    "PLW2901", # loop variable purposely reassigned
-    "S101", # Use of assert detected.
-    "S110", # try-except-pass detected.
-    "S112", # try-except-continue detected.
-    "S201", # Flask debug mode is enabled.
-]
-
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
     "D",
