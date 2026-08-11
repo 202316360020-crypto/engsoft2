@@ -121,4 +121,18 @@ ignore=[
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257" # Use a convenção PEP 257 para validar as docstrings, o que inclui a validação dos parâmetros :param: e outros elementos de documentação.
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "D101",
+    "D102",
+    "D200",
+    "D205",
+    "D400",
+    "PLR2004",
+]
+
+"tests/conftest.py" = [
+    "PLR0913",
+    "RET504",
+]
  
