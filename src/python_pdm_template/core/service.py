@@ -23,7 +23,6 @@ class SimulationRun:
 
 def build_strategy(strategy_name: str, short_window: int = 9, long_window: int = 21) -> BaseStrategy:
     """Constrói a estratégia solicitada."""
-
     normalized = strategy_name.strip().lower()
     if normalized == "buy and hold":
         return BuyAndHoldStrategy()
@@ -34,7 +33,6 @@ def build_strategy(strategy_name: str, short_window: int = 9, long_window: int =
 
 def load_market_data(file_path: str, start_date: str | None = None, end_date: str | None = None) -> pd.DataFrame:
     """Carrega o CSV e aplica filtro opcional de período."""
-
     parser = OHLCVParser()
     frame = parser.parse(file_path)
 
@@ -60,7 +58,6 @@ def simulate_file(
     long_window: int = 21,
 ) -> SimulationRun:
     """Executa uma simulação para um único arquivo."""
-
     data = load_market_data(file_path, start_date=start_date, end_date=end_date)
     strategy = build_strategy(strategy_name, short_window=short_window, long_window=long_window)
     result = strategy.run(data, capital)
@@ -77,7 +74,6 @@ def simulate_files(
     long_window: int = 21,
 ) -> list[SimulationRun]:
     """Executa uma simulação para vários arquivos."""
-
     return [
         simulate_file(
             file_path,
@@ -94,7 +90,6 @@ def simulate_files(
 
 def aggregate_runs(runs: list[SimulationRun], capital_per_file: float) -> SimulationResult:
     """Agrega múltiplas execuções em um resumo de portfólio."""
-
     if not runs:
         raise ValueError("É necessário informar ao menos uma execução.")
 
