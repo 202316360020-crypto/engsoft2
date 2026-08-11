@@ -18,13 +18,13 @@ class OHLCVParser:
     def parse(self, filepath: str) -> pd.DataFrame:
         """Lê um CSV de disco e retorna um DataFrame indexado por data.
 
-        Args:
+        Argumentos:
             filepath: caminho do arquivo CSV.
 
-        Returns:
+        Retorna:
             pd.DataFrame: dados OHLCV indexados por data.
 
-        Raises:
+        Lança:
             InvalidCSVError: se o arquivo não puder ser lido ou o conteúdo for inválido.
         """
         try:
@@ -37,13 +37,13 @@ class OHLCVParser:
     def parse_from_string(self, csv_content: str) -> pd.DataFrame:
         """Lê um CSV a partir de uma string.
 
-        Args:
+        Argumentos:
             csv_content: conteúdo CSV em texto.
 
-        Returns:
+        Retorna:
             pd.DataFrame: dados OHLCV indexados por data.
 
-        Raises:
+        Lança:
             InvalidCSVError: se o conteúdo CSV for inválido ou estiver faltando a coluna Date.
         """
         try:
@@ -66,10 +66,10 @@ class OHLCVParser:
     def validate_columns(cls, frame: pd.DataFrame) -> None:
         """Garante a presença das colunas obrigatórias.
 
-        Args:
+        Argumentos:
             frame: DataFrame a ser validado.
 
-        Raises:
+        Lança:
             MissingColumnsError: se alguma coluna obrigatória estiver ausente.
         """
         missing_columns = cls.REQUIRED_COLUMNS - set(frame.columns)
@@ -80,10 +80,10 @@ class OHLCVParser:
     def validate_chronological_order(frame: pd.DataFrame) -> None:
         """Garante ordenação cronológica estrita.
 
-        Args:
+        Argumentos:
             frame: DataFrame com índice de datas.
 
-        Raises:
+        Lança:
             OutOfOrderDatesError: se as datas não estiverem em ordem ou estiverem duplicadas.
         """
         if frame.index.duplicated().any() or not frame.index.is_monotonic_increasing:
@@ -93,10 +93,10 @@ class OHLCVParser:
     def validate_capital(capital: float) -> None:
         """Garante que o capital inicial é positivo.
 
-        Args:
+        Argumentos:
             capital: capital inicial a ser validado.
 
-        Raises:
+        Lança:
             ValueError: se o capital inicial for menor ou igual a zero.
         """
         if capital <= 0:

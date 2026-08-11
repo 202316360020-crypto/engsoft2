@@ -6,13 +6,13 @@ from __future__ import annotations
 def calculate_max_drawdown(equity_curve: list[float]) -> float:
     """Calcula o maior drawdown percentual da curva de capital.
 
-    Args:
+    Argumentos:
         equity_curve: série de valores de capital ao longo do tempo.
 
-    Returns:
+    Retorna:
         float: maior drawdown percentual.
 
-    Raises:
+    Lança:
         ValueError: se a curva de capital estiver vazia.
     """
     if not equity_curve:
@@ -34,13 +34,13 @@ def calculate_max_drawdown(equity_curve: list[float]) -> float:
 def calculate_win_rate(operations: list[dict]) -> float:
     """Calcula a taxa de acerto em porcentagem.
 
-    Args:
+    Argumentos:
         operations: lista de operações a serem avaliadas.
 
-    Returns:
+    Retorna:
         float: taxa de acerto percentual.
 
-    Raises:
+    Lança:
         ValueError: se a lista de operações estiver vazia.
     """
     if not operations:
@@ -53,14 +53,14 @@ def calculate_win_rate(operations: list[dict]) -> float:
 def calculate_return(initial_capital: float, final_balance: float) -> float:
     """Calcula o retorno percentual total.
 
-    Args:
+    Argumentos:
         initial_capital: saldo inicial investido.
         final_balance: saldo final após a simulação.
 
-    Returns:
+    Retorna:
         float: retorno percentual total.
 
-    Raises:
+    Lança:
         ValueError: se o capital inicial for menor ou igual a zero.
     """
     if initial_capital <= 0:

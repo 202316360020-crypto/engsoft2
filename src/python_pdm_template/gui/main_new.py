@@ -264,12 +264,12 @@ class QuantInvestApp:
     def _metric_card(label: str, value_control: ft.Text, subtitle: str) -> ft.Control:
         """Cria um cartão de métrica com título e valor formatado.
 
-        Args:
+        Argumentos:
             label: texto do título do cartão.
             value_control: controle de texto que apresenta o valor.
             subtitle: texto explicativo abaixo do valor.
 
-        Returns:
+        Retorna:
             ft.Control: cartão com métrica formatada.
         """
         return CustomCard(
