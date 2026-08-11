@@ -14,10 +14,15 @@ from .charts import render_candlestick_chart, render_line_chart
 from .components import AccentPill, CustomButton, CustomCard, DateSelectorCard, ThemeColors
 
 
+MINIMUM_CANDLES_FOR_ALERT = 2
+WIN_RATE_THRESHOLD = 0.5
+
+
 class QuantInvestApp:
     """Dashboard de backtest com aparência próxima de uma plataforma de trading."""
 
     def __init__(self) -> None:
+        """Inicializa o estado básico da aplicação e mantem referências de controle."""
         self.page: Optional[ft.Page] = None
         self.selected_file_paths: list[str] = []
         self.strategy_value = "Buy and Hold"
@@ -47,6 +52,7 @@ class QuantInvestApp:
         self.strategy_dropdown: Optional[ft.Dropdown] = None
 
     def build_page(self, page: ft.Page) -> None:
+        """Constrói a página inicial da aplicação e inicializa o layout."""
         self.page = page
         page.title = "QuantInvest Suite"
         page.bgcolor = ThemeColors.BACKGROUND
@@ -214,7 +220,13 @@ class QuantInvestApp:
             ),
         )
 
-    def _build_header(self) -> ft.Control:
+    @staticmethod
+    def _build_header() -> ft.Control:
+        """Cria o cabeçalho superior da interface principal.
+
+        Returns:
+            ft.Control: o contêiner de cabeçalho.
+        """
         return ft.Container(
             padding=18,
             border_radius=18,
@@ -246,7 +258,18 @@ class QuantInvestApp:
             ],
         )
 
-    def _metric_card(self, label: str, value_control: ft.Text, subtitle: str) -> ft.Control:
+    @staticmethod
+    def _metric_card(label: str, value_control: ft.Text, subtitle: str) -> ft.Control:
+        """Cria um cartão de métrica com título e valor formatado.
+
+        Args:
+            label: texto do título do cartão.
+            value_control: controle de texto que apresenta o valor.
+            subtitle: texto explicativo abaixo do valor.
+
+        Returns:
+            ft.Control: cartão com métrica formatada.
+        """
         return CustomCard(
             ft.Column(
                 spacing=8,
@@ -280,6 +303,7 @@ class QuantInvestApp:
         )
 
     async def on_select_file_click(self, _event: ft.ControlEvent) -> None:
+        """Abre o seletor de arquivos e atualiza a lista de arquivos selecionados."""
         if self.file_picker is None:
             return
         selected_files = await self.file_picker.pick_files(allow_multiple=True, allowed_extensions=["csv"])
@@ -346,7 +370,16 @@ class QuantInvestApp:
         else:
             self._set_status("Arquivos prontos para simulação. Filtros de data reiniciados.")
 
-    def _get_selected_files_date_range(self, paths: list[str]) -> tuple[str, str] | None:
+    @staticmethod
+    def _get_selected_files_date_range(paths: list[str]) -> tuple[str, str] | None:
+        """Calcula o intervalo de datas compartilhado pelos arquivos selecionados.
+
+        Args:
+            paths: lista de caminhos para arquivos CSV selecionados.
+
+        Returns:
+            tuple[str, str] | None: intervalo de datas no formato ISO ou None.
+        """
         if not paths:
             return None
 
@@ -357,7 +390,8 @@ class QuantInvestApp:
         for file_path in paths:
             try:
                 frame = parser.parse(file_path)
-            except Exception:
+            except Exception as exc:
+                print(f"Erro ao ler {file_path}: {exc}")
                 continue
 
             if frame.empty:
@@ -374,11 +408,13 @@ class QuantInvestApp:
         return min_date.date().isoformat(), max_date.date().isoformat()
 
     def on_strategy_changed(self, _event: ft.ControlEvent) -> None:
+        """Atualiza o valor da estratégia selecionada pelo usuário."""
         if self.strategy_dropdown is not None and self.strategy_dropdown.value:
             self.strategy_value = str(self.strategy_dropdown.value)
             self._set_status(f"Estratégia selecionada: {self.strategy_value}")
 
     def on_simulate_click(self, _event: ft.ControlEvent) -> None:
+        """Inicia a simulação para os arquivos selecionados e exibe os resultados."""
         if not self.selected_file_paths:
             self.show_error("Selecione ao menos um arquivo CSV")
             return
@@ -422,7 +458,7 @@ class QuantInvestApp:
             self._update_visuals(runs[0].data, runs[0].result.equity_curve)
             self._update_summary(runs, summary, capital)
             candle_count = len(runs[0].data)
-            if candle_count < 2:
+            if candle_count < MINIMUM_CANDLES_FOR_ALERT:
                 self._set_status("Simulação concluída, mas o período filtrado retornou apenas 1 candle. Amplie as datas.")
             elif self.strategy_value.strip().lower() == "buy and hold" and runs[0].result.total_trades <= 1:
                 self._set_status(f"Simulação concluída com {len(runs)} arquivo(s). Estratégia Buy and Hold gera 1 operação por arquivo.")
@@ -432,6 +468,7 @@ class QuantInvestApp:
             self.show_error(str(exc))
 
     def on_clear_click(self, _event: ft.ControlEvent) -> None:
+        """Limpa o formulário e redefine o estado para o valor inicial."""
         self.selected_file_paths = []
         self.strategy_value = "Buy and Hold"
         self.current_run = None
@@ -485,7 +522,7 @@ class QuantInvestApp:
             self.metrics["max_drawdown"].value = f"{summary.max_drawdown_pct:.2f}%"
             self.metrics["final_balance"].color = ThemeColors.GREEN if summary.final_balance >= 0 else ThemeColors.RED
             self.metrics["total_return"].color = ThemeColors.GREEN if summary.total_return_pct >= 0 else ThemeColors.RED
-            self.metrics["win_rate"].color = ThemeColors.GREEN if closed_trades > 0 and winning_trades / closed_trades >= 0.5 else ThemeColors.RED
+            self.metrics["win_rate"].color = ThemeColors.GREEN if closed_trades > 0 and winning_trades / closed_trades >= WIN_RATE_THRESHOLD else ThemeColors.RED
             self.metrics["max_drawdown"].color = ThemeColors.RED
         self._refresh_page()
 
@@ -574,6 +611,7 @@ class QuantInvestApp:
         return value
 
     def show_error(self, message: str) -> None:
+        """Exibe uma mensagem de erro na tela e atualiza o status da aplicação."""
         if self.page is None:
             return
         if self.error_container is not None:
@@ -604,6 +642,7 @@ class QuantInvestApp:
 
 
 def main() -> None:
+    """Ponto de entrada principal da aplicação Flet."""
     app = QuantInvestApp()
     ft.app(target=app.build_page)
 

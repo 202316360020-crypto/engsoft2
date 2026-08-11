@@ -81,7 +81,40 @@ def _apply_axis_theme(axis: plt.Axes) -> None:
         spine.set_color(ThemeColors.BORDER)
 
 
+def _resolve_candlestick_columns(frame: pd.DataFrame) -> tuple[str, str, str, str] | None:
+    lower_columns = {column.lower(): column for column in frame.columns}
+    close_column = next((lower_columns[name] for name in ("close", "adj close", "adj_close") if name in lower_columns), None)
+    if close_column is None:
+        return None
+
+    open_column = next((lower_columns[name] for name in ("open",) if name in lower_columns), close_column)
+    high_column = next((lower_columns[name] for name in ("high",) if name in lower_columns), close_column)
+    low_column = next((lower_columns[name] for name in ("low",) if name in lower_columns), close_column)
+    return open_column, high_column, low_column, close_column
+
+
+def _draw_candlesticks(axis: plt.Axes, opens: list[float], highs: list[float], lows: list[float], closes: list[float]) -> None:
+    for idx, (open_value, high_value, low_value, close_value) in enumerate(zip(opens, highs, lows, closes, strict=False)):
+        color = ThemeColors.GREEN if close_value >= open_value else ThemeColors.RED
+        axis.vlines(idx, low_value, high_value, color=color, linewidth=1.0)
+        body_bottom = min(open_value, close_value)
+        body_height = max(abs(close_value - open_value), 0.04)
+        axis.add_patch(Rectangle((idx - 0.32, body_bottom), 0.64, body_height, facecolor=color, edgecolor=color, alpha=0.95))
+
+
 def render_line_chart(values: list[float], title: str, subtitle: str = "", width: int = 900, height: int = 340) -> ft.Container:
+    """Renderiza uma curva de capital em formato de imagem.
+
+    Args:
+        values: valores da curva de capital.
+        title: título do gráfico.
+        subtitle: texto secundário exibido abaixo do título.
+        width: largura do contêiner.
+        height: altura do contêiner.
+
+    Returns:
+        ft.Container: contêiner com o gráfico ou estado vazio.
+    """
     if not values:
         return _empty_state(title, subtitle or "Nenhum valor para exibir.")
     if len(values) == 1:
@@ -102,20 +135,26 @@ def render_line_chart(values: list[float], title: str, subtitle: str = "", width
 
 
 def render_candlestick_chart(frame: pd.DataFrame, width: int = 900, height: int = 340) -> ft.Container:
+    """Renderiza um gráfico de candles a partir de um DataFrame OHLCV.
+
+    Args:
+        frame: DataFrame com colunas OHLCV.
+        width: largura do contêiner.
+        height: altura do contêiner.
+
+    Returns:
+        ft.Container: contêiner com o gráfico ou estado vazio.
+    """
     if frame is None or frame.empty:
         return _empty_state("Candlestick", "Abra um CSV para visualizar o OHLCV.")
     if len(frame) == 1:
         return _empty_state("Candlestick", "Apenas 1 candle no periodo. Amplie as datas para visualizar o grafico.")
 
-    lower_columns = {column.lower(): column for column in frame.columns}
-    close_column = next((lower_columns[name] for name in ("close", "adj close", "adj_close") if name in lower_columns), None)
-    if close_column is None:
+    resolved_columns = _resolve_candlestick_columns(frame)
+    if resolved_columns is None:
         return _empty_state("Candlestick", "A serie precisa de uma coluna Close para o desenho.")
 
-    open_column = next((lower_columns[name] for name in ("open",) if name in lower_columns), close_column)
-    high_column = next((lower_columns[name] for name in ("high",) if name in lower_columns), close_column)
-    low_column = next((lower_columns[name] for name in ("low",) if name in lower_columns), close_column)
-
+    open_column, high_column, low_column, close_column = resolved_columns
     opens = frame[open_column].astype(float).tolist()
     highs = frame[high_column].astype(float).tolist()
     lows = frame[low_column].astype(float).tolist()
@@ -126,12 +165,7 @@ def render_candlestick_chart(frame: pd.DataFrame, width: int = 900, height: int 
     _apply_axis_theme(axis)
     figure.subplots_adjust(left=0.06, right=0.98, top=0.92, bottom=0.16)
 
-    for idx, (open_value, high_value, low_value, close_value) in enumerate(zip(opens, highs, lows, closes, strict=False)):
-        color = ThemeColors.GREEN if close_value >= open_value else ThemeColors.RED
-        axis.vlines(idx, low_value, high_value, color=color, linewidth=1.0)
-        body_bottom = min(open_value, close_value)
-        body_height = max(abs(close_value - open_value), 0.04)
-        axis.add_patch(Rectangle((idx - 0.32, body_bottom), 0.64, body_height, facecolor=color, edgecolor=color, alpha=0.95))
+    _draw_candlesticks(axis, opens, highs, lows, closes)
 
     axis.set_xlim(-1, len(closes))
     axis.set_ylim(min(lows) * 0.995, max(highs) * 1.005)
@@ -142,7 +176,10 @@ def render_candlestick_chart(frame: pd.DataFrame, width: int = 900, height: int 
 
 
 class ChartPlaceholder(ft.Container):
+    """Contêiner de substituição exibido quando o gráfico real não está disponível."""
+
     def __init__(self, chart_type: str = "candlestick"):
+        """Inicializa o placeholder do gráfico com título e descrição apropriados."""
         if chart_type == "candlestick":
             title, description = "Candlestick", "OHLCV da serie temporal"
         elif chart_type == "capital_curve":
@@ -168,30 +205,81 @@ class ChartPlaceholder(ft.Container):
 
 
 class MplfinanceChart:
+    """Placeholder para renderização de gráficos com mplfinance."""
+
     @staticmethod
     def create_candlestick(_data: pd.DataFrame) -> ft.Container:
+        """Cria um gráfico de candlestick com mplfinance usando dados OHLCV.
+
+        Args:
+            _data: DataFrame com preço OHLCV.
+
+        Returns:
+            ft.Container: placeholder do gráfico.
+        """
         return ChartPlaceholder("candlestick")
 
 
 class PlotlyChart:
+    """Placeholder para renderização de gráficos com Plotly."""
+
     @staticmethod
     def create_capital_curve(_balances: list[float], _dates: Optional[list[str]] = None) -> ft.Container:
+        """Cria um gráfico de curva de capital com Plotly.
+
+        Args:
+            _balances: lista de saldos ao longo do tempo.
+            _dates: datas opcionais para cada saldo.
+
+        Returns:
+            ft.Container: placeholder do gráfico.
+        """
         return ChartPlaceholder("capital_curve")
 
     @staticmethod
     def create_returns_histogram(_returns: list[float], _labels: Optional[list[str]] = None) -> ft.Container:
+        """Cria um histograma de retornos com Plotly.
+
+        Args:
+            _returns: lista de retornos percentuais.
+            _labels: rótulos opcionais para cada retorno.
+
+        Returns:
+            ft.Container: placeholder do gráfico.
+        """
         return ChartPlaceholder("returns")
 
 
 class ChartManager:
+    """Gerencia a renderização de gráficos e seus componentes de placeholder."""
+
     def __init__(self):
+        """Inicializa o gerenciador de gráficos com placeholders vazios."""
         self.candlestick_chart = ChartPlaceholder("candlestick")
         self.capital_curve_chart = ChartPlaceholder("capital_curve")
 
     def update_candlestick(self, frame: pd.DataFrame) -> ft.Control:
+        """Renderiza e atualiza o gráfico de candlestick.
+
+        Args:
+            frame: DataFrame com colunas OHLCV.
+
+        Returns:
+            ft.Control: controle que contém o gráfico renderizado.
+        """
         self.candlestick_chart = render_candlestick_chart(frame)
         return self.candlestick_chart
 
     def update_capital_curve(self, values: list[float], title: str = "Curva de Capital", subtitle: str = "") -> ft.Control:
+        """Renderiza e atualiza a curva de capital.
+
+        Args:
+            values: lista de saldos ou valores de capital.
+            title: título do gráfico.
+            subtitle: descrição secundária do gráfico.
+
+        Returns:
+            ft.Control: controle que contém o gráfico renderizado.
+        """
         self.capital_curve_chart = render_line_chart(values, title, subtitle)
         return self.capital_curve_chart

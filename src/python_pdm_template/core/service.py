@@ -9,7 +9,24 @@ import pandas as pd
 from .exceptions import InvalidCSVError
 from .metrics import calculate_return, calculate_win_rate
 from .parser import OHLCVParser
-from .strategies import BaseStrategy, BuyAndHoldStrategy, MovingAverageStrategy, SimulationResult
+from .strategies import (
+    BaseStrategy,
+    BuyAndHoldStrategy,
+    MovingAverageStrategy,
+    SimulationResult,
+)
+
+
+@dataclass(slots=True)
+class SimulationOptions:
+    """Configurações de simulação usadas pela aplicação."""
+
+    strategy_name: str
+    capital: float
+    start_date: str | None = None
+    end_date: str | None = None
+    short_window: int = 9
+    long_window: int = 21
 
 
 @dataclass(slots=True)
@@ -22,7 +39,19 @@ class SimulationRun:
 
 
 def build_strategy(strategy_name: str, short_window: int = 9, long_window: int = 21) -> BaseStrategy:
-    """Constrói a estratégia solicitada."""
+    """Constrói a estratégia solicitada.
+
+    Args:
+        strategy_name: nome da estratégia solicitada.
+        short_window: janela curta para médias móveis.
+        long_window: janela longa para médias móveis.
+
+    Returns:
+        BaseStrategy: instância da estratégia selecionada.
+
+    Raises:
+        ValueError: se a estratégia for desconhecida.
+    """
     normalized = strategy_name.strip().lower()
     if normalized == "buy and hold":
         return BuyAndHoldStrategy()
@@ -32,7 +61,19 @@ def build_strategy(strategy_name: str, short_window: int = 9, long_window: int =
 
 
 def load_market_data(file_path: str, start_date: str | None = None, end_date: str | None = None) -> pd.DataFrame:
-    """Carrega o CSV e aplica filtro opcional de período."""
+    """Carrega o CSV e aplica filtro opcional de período.
+
+    Args:
+        file_path: caminho do arquivo CSV.
+        start_date: data inicial para o filtro, se fornecida.
+        end_date: data final para o filtro, se fornecida.
+
+    Returns:
+        pd.DataFrame: dados OHLCV filtrados pelo intervalo.
+
+    Raises:
+        InvalidCSVError: se o arquivo for inválido ou não houver dados no intervalo selecionado.
+    """
     parser = OHLCVParser()
     frame = parser.parse(file_path)
 
@@ -48,48 +89,52 @@ def load_market_data(file_path: str, start_date: str | None = None, end_date: st
     return frame
 
 
-def simulate_file(
-    file_path: str,
-    strategy_name: str,
-    capital: float,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    short_window: int = 9,
-    long_window: int = 21,
-) -> SimulationRun:
-    """Executa uma simulação para um único arquivo."""
-    data = load_market_data(file_path, start_date=start_date, end_date=end_date)
-    strategy = build_strategy(strategy_name, short_window=short_window, long_window=long_window)
-    result = strategy.run(data, capital)
+def simulate_file(file_path: str, options: SimulationOptions) -> SimulationRun:
+    """Executa uma simulação para um único arquivo.
+
+    Args:
+        file_path: caminho do arquivo CSV.
+        options: opções de simulação.
+
+    Returns:
+        SimulationRun: resultado da simulação.
+    """
+    data = load_market_data(file_path, start_date=options.start_date, end_date=options.end_date)
+    strategy = build_strategy(
+        options.strategy_name,
+        short_window=options.short_window,
+        long_window=options.long_window,
+    )
+    result = strategy.run(data, options.capital)
     return SimulationRun(file_path=file_path, data=data, result=result)
 
 
-def simulate_files(
-    file_paths: list[str],
-    strategy_name: str,
-    capital: float,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    short_window: int = 9,
-    long_window: int = 21,
-) -> list[SimulationRun]:
-    """Executa uma simulação para vários arquivos."""
-    return [
-        simulate_file(
-            file_path,
-            strategy_name,
-            capital,
-            start_date=start_date,
-            end_date=end_date,
-            short_window=short_window,
-            long_window=long_window,
-        )
-        for file_path in file_paths
-    ]
+def simulate_files(file_paths: list[str], options: SimulationOptions) -> list[SimulationRun]:
+    """Executa uma simulação para vários arquivos.
+
+    Args:
+        file_paths: lista de arquivos para simulação.
+        options: opções de simulação.
+
+    Returns:
+        list[SimulationRun]: resultados de simulação para cada arquivo.
+    """
+    return [simulate_file(file_path, options) for file_path in file_paths]
 
 
 def aggregate_runs(runs: list[SimulationRun], capital_per_file: float) -> SimulationResult:
-    """Agrega múltiplas execuções em um resumo de portfólio."""
+    """Agrega múltiplas execuções em um resumo de portfólio.
+
+    Args:
+        runs: lista de resultados de simulação para cada arquivo.
+        capital_per_file: capital alocado para cada arquivo.
+
+    Returns:
+        SimulationResult: resumo consolidado de portfólio.
+
+    Raises:
+        ValueError: se a lista de execuções estiver vazia.
+    """
     if not runs:
         raise ValueError("É necessário informar ao menos uma execução.")
 
