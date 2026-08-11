@@ -86,7 +86,7 @@ def _format_result(file_path: str, result) -> str:
 def run_cli(argv: Sequence[str] | None = None) -> int:
     """Executa a CLI e retorna um código de saída.
 
-    Returns:
+    Retorna:
         int: código de saída 0 em caso de sucesso ou 1 em caso de erro.
     """
     parser = build_parser()
@@ -143,10 +143,10 @@ def run_cli(argv: Sequence[str] | None = None) -> int:
 def main(argv: Sequence[str] | None = None) -> None:
     """Ponto de entrada para `python -m python_pdm_template`.
 
-    Args:
+    Argumentos:
         argv: Argumentos de linha de comando opcionais.
 
-    Raises:
+    Lança:
         SystemExit: quando a CLI finaliza com código de saída.
     """
     raise SystemExit(run_cli(argv))

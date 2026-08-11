@@ -105,14 +105,14 @@ def _draw_candlesticks(axis: plt.Axes, opens: list[float], highs: list[float], l
 def render_line_chart(values: list[float], title: str, subtitle: str = "", width: int = 900, height: int = 340) -> ft.Container:
     """Renderiza uma curva de capital em formato de imagem.
 
-    Args:
+    Argumentos:
         values: valores da curva de capital.
         title: título do gráfico.
         subtitle: texto secundário exibido abaixo do título.
         width: largura do contêiner.
         height: altura do contêiner.
 
-    Returns:
+    Retorna:
         ft.Container: contêiner com o gráfico ou estado vazio.
     """
     if not values:
@@ -137,12 +137,12 @@ def render_line_chart(values: list[float], title: str, subtitle: str = "", width
 def render_candlestick_chart(frame: pd.DataFrame, width: int = 900, height: int = 340) -> ft.Container:
     """Renderiza um gráfico de candles a partir de um DataFrame OHLCV.
 
-    Args:
+    Argumentos:
         frame: DataFrame com colunas OHLCV.
         width: largura do contêiner.
         height: altura do contêiner.
 
-    Returns:
+    Retorna:
         ft.Container: contêiner com o gráfico ou estado vazio.
     """
     if frame is None or frame.empty:
@@ -211,10 +211,10 @@ class MplfinanceChart:
     def create_candlestick(_data: pd.DataFrame) -> ft.Container:
         """Cria um gráfico de candlestick com mplfinance usando dados OHLCV.
 
-        Args:
+        Argumentos:
             _data: DataFrame com preço OHLCV.
 
-        Returns:
+        Retorna:
             ft.Container: placeholder do gráfico.
         """
         return ChartPlaceholder("candlestick")
@@ -227,11 +227,11 @@ class PlotlyChart:
     def create_capital_curve(_balances: list[float], _dates: Optional[list[str]] = None) -> ft.Container:
         """Cria um gráfico de curva de capital com Plotly.
 
-        Args:
+        Argumentos:
             _balances: lista de saldos ao longo do tempo.
             _dates: datas opcionais para cada saldo.
 
-        Returns:
+        Retorna:
             ft.Container: placeholder do gráfico.
         """
         return ChartPlaceholder("capital_curve")
@@ -240,11 +240,11 @@ class PlotlyChart:
     def create_returns_histogram(_returns: list[float], _labels: Optional[list[str]] = None) -> ft.Container:
         """Cria um histograma de retornos com Plotly.
 
-        Args:
+        Argumentos:
             _returns: lista de retornos percentuais.
             _labels: rótulos opcionais para cada retorno.
 
-        Returns:
+        Retorna:
             ft.Container: placeholder do gráfico.
         """
         return ChartPlaceholder("returns")

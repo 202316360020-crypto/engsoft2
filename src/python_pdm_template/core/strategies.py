@@ -56,14 +56,14 @@ class BuyAndHoldStrategy(BaseStrategy):
     def run(self, data: pd.DataFrame, initial_capital: float) -> SimulationResult:
         """Executa a estratégia buy and hold e retorna o resultado.
 
-        Args:
+        Argumentos:
             data: série temporal OHLCV.
             initial_capital: capital inicial para a simulação.
 
-        Returns:
+        Retorna:
             SimulationResult: resultado da simulação.
 
-        Raises:
+        Lança:
             BankruptcyError: se o capital inicial for menor ou igual a zero.
             ValueError: se os preços forem inválidos.
         """
@@ -108,11 +108,11 @@ class MovingAverageStrategy(BaseStrategy):
     def __init__(self, short_window: int = 9, long_window: int = 21):
         """Inicializa os parâmetros da estratégia de médias móveis.
 
-        Args:
+        Argumentos:
             short_window: largura da janela curta.
             long_window: largura da janela longa.
 
-        Raises:
+        Lança:
             ValueError: se as janelas forem inválidas.
         """
         if short_window <= 0 or long_window <= 0:
@@ -125,14 +125,14 @@ class MovingAverageStrategy(BaseStrategy):
     def run(self, data: pd.DataFrame, initial_capital: float) -> SimulationResult:
         """Executa a estratégia de cruzamento de médias móveis.
 
-        Args:
+        Argumentos:
             data: série temporal OHLCV.
             initial_capital: capital inicial para a simulação.
 
-        Returns:
+        Retorna:
             SimulationResult: resultado da simulação.
 
-        Raises:
+        Lança:
             BankruptcyError: se o capital inicial for menor ou igual a zero.
             ValueError: se os dados ou preços forem inválidos.
         """

@@ -41,15 +41,15 @@ class SimulationRun:
 def build_strategy(strategy_name: str, short_window: int = 9, long_window: int = 21) -> BaseStrategy:
     """Constrói a estratégia solicitada.
 
-    Args:
+    Argumentos:
         strategy_name: nome da estratégia solicitada.
         short_window: janela curta para médias móveis.
         long_window: janela longa para médias móveis.
 
-    Returns:
+    Retorna:
         BaseStrategy: instância da estratégia selecionada.
 
-    Raises:
+    Lança:
         ValueError: se a estratégia for desconhecida.
     """
     normalized = strategy_name.strip().lower()
@@ -63,15 +63,15 @@ def build_strategy(strategy_name: str, short_window: int = 9, long_window: int =
 def load_market_data(file_path: str, start_date: str | None = None, end_date: str | None = None) -> pd.DataFrame:
     """Carrega o CSV e aplica filtro opcional de período.
 
-    Args:
+    Argumentos:
         file_path: caminho do arquivo CSV.
         start_date: data inicial para o filtro, se fornecida.
         end_date: data final para o filtro, se fornecida.
 
-    Returns:
+    Retorna:
         pd.DataFrame: dados OHLCV filtrados pelo intervalo.
 
-    Raises:
+    Lança:
         InvalidCSVError: se o arquivo for inválido ou não houver dados no intervalo selecionado.
     """
     parser = OHLCVParser()
@@ -92,11 +92,11 @@ def load_market_data(file_path: str, start_date: str | None = None, end_date: st
 def simulate_file(file_path: str, options: SimulationOptions) -> SimulationRun:
     """Executa uma simulação para um único arquivo.
 
-    Args:
+    Argumentos:
         file_path: caminho do arquivo CSV.
         options: opções de simulação.
 
-    Returns:
+    Retorna:
         SimulationRun: resultado da simulação.
     """
     data = load_market_data(file_path, start_date=options.start_date, end_date=options.end_date)
@@ -112,11 +112,11 @@ def simulate_file(file_path: str, options: SimulationOptions) -> SimulationRun:
 def simulate_files(file_paths: list[str], options: SimulationOptions) -> list[SimulationRun]:
     """Executa uma simulação para vários arquivos.
 
-    Args:
+    Argumentos:
         file_paths: lista de arquivos para simulação.
         options: opções de simulação.
 
-    Returns:
+    Retorna:
         list[SimulationRun]: resultados de simulação para cada arquivo.
     """
     return [simulate_file(file_path, options) for file_path in file_paths]
@@ -125,14 +125,14 @@ def simulate_files(file_paths: list[str], options: SimulationOptions) -> list[Si
 def aggregate_runs(runs: list[SimulationRun], capital_per_file: float) -> SimulationResult:
     """Agrega múltiplas execuções em um resumo de portfólio.
 
-    Args:
+    Argumentos:
         runs: lista de resultados de simulação para cada arquivo.
         capital_per_file: capital alocado para cada arquivo.
 
-    Returns:
+    Retorna:
         SimulationResult: resumo consolidado de portfólio.
 
-    Raises:
+    Lança:
         ValueError: se a lista de execuções estiver vazia.
     """
     if not runs:

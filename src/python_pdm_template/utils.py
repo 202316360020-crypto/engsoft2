@@ -11,11 +11,11 @@ def somar(a: int | float, b: int | float):
     """
     Retorna a soma de dois números.
 
-    Args:
+    Argumentos:
         a: Primeiro número.
         b: Segundo número.
 
-    Returns:
+    Retorna:
         int | float: soma de a e b.
     """
     return a + b
@@ -25,7 +25,7 @@ def obter_mensagem():
     """
     Retorna uma mensagem de exemplo.
 
-    Returns:
+    Retorna:
         str: mensagem digitada pelo usuário.
     """
     return input("Digite uma mensagem: ")
