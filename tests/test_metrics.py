@@ -11,31 +11,7 @@ Cobre:
 import pytest
 import pandas as pd
 
-
-# ---------------------------------------------------------------------------
-# Stubs para TDD — substitua pelo import real:
-#   from core.metrics import calculate_max_drawdown, calculate_win_rate, calculate_return
-# ---------------------------------------------------------------------------
-
-def calculate_max_drawdown(equity_curve: list[float]) -> float:
-    """
-    Stub: calcula o Max Drawdown percentual de uma curva de capital.
-    Fórmula: max((peak - trough) / peak) ao longo de toda a série.
-    """
-    raise NotImplementedError("Implemente calculate_max_drawdown() em core/metrics.py")
-
-
-def calculate_win_rate(operations: list[dict]) -> float:
-    """
-    Stub: calcula a taxa de acerto.
-    Cada operação deve ter a chave 'profit' (float).
-    """
-    raise NotImplementedError("Implemente calculate_win_rate() em core/metrics.py")
-
-
-def calculate_return(initial_capital: float, final_balance: float) -> float:
-    """Stub: retorno percentual = (final - inicial) / inicial * 100."""
-    raise NotImplementedError("Implemente calculate_return() em core/metrics.py")
+from python_pdm_template.core.metrics import calculate_max_drawdown, calculate_win_rate, calculate_return
 
 
 # ---------------------------------------------------------------------------

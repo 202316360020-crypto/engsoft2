@@ -24,11 +24,13 @@ EXPECTED_CLI_GUI_CALL_COUNT = 2
 # ---------------------------------------------------------------------------
 # Reaproveitando stubs do test_strategies para integração
 # ---------------------------------------------------------------------------
-from test_strategies import (
+from python_pdm_template.core.strategies import (
     BaseStrategy, BuyAndHoldStrategy, MovingAverageStrategy,
-    SimulationResult, BankruptcyError,
+    SimulationResult,
 )
-from test_parser import OHLCVParser, MissingColumnsError, OutOfOrderDatesError
+from python_pdm_template.core.exceptions import BankruptcyError
+from python_pdm_template.core.parser import OHLCVParser
+from python_pdm_template.core.exceptions import MissingColumnsError, OutOfOrderDatesError
 
 
 # ---------------------------------------------------------------------------

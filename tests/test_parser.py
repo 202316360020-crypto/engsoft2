@@ -12,27 +12,10 @@ Cobre:
 import pytest
 from unittest.mock import patch, mock_open
 
-# ---------------------------------------------------------------------------
-# ATENÇÃO: os imports abaixo assumem que o Core ficará em:
-#   core/parser.py  →  class OHLCVParser
-#   core/exceptions.py  →  InvalidCSVError, OutOfOrderDatesError, MissingColumnsError
-#
-# Ajuste os caminhos conforme a estrutura real do repositório.
-# ---------------------------------------------------------------------------
-# from core.parser import OHLCVParser
-# from core.exceptions import InvalidCSVError, OutOfOrderDatesError, MissingColumnsError
+import pandas as pd
 
-# Enquanto o Core não existe, usamos stubs para TDD (test-driven first).
-# Quando o Core for implementado, remova os stubs e descomente os imports reais.
-
-class MissingColumnsError(Exception):
-    pass
-
-class OutOfOrderDatesError(Exception):
-    pass
-
-class InvalidCSVError(Exception):
-    pass
+from python_pdm_template.core.parser import OHLCVParser
+from python_pdm_template.core.exceptions import InvalidCSVError, MissingColumnsError, OutOfOrderDatesError
 
 
 REQUIRED_COLUMNS = {"Open", "High", "Low", "Close", "Volume"}
@@ -57,47 +40,6 @@ MALFORMED_ROWS_CSV = """Date,Open,High,Low,Close,Volume
 LINHA_INVALIDA
 2024-01-04,12.0,13.5,11.5,13.0,1200
 """
-
-
-# ---------------------------------------------------------------------------
-# Stub do OHLCVParser para TDD — substitua pela implementação real
-# ---------------------------------------------------------------------------
-
-import pandas as pd
-
-
-class OHLCVParser:
-    """
-    Stub de OHLCVParser para guiar a implementação real no Core.
-
-    O parser real deve:
-    1. Ler o CSV do caminho fornecido
-    2. Validar colunas obrigatórias (OHLCV)
-    3. Validar ordem cronológica das datas
-    4. Descartar linhas malformadas com log de aviso
-    5. Retornar pd.DataFrame indexado por Date
-    """
-
-    REQUIRED = {"Open", "High", "Low", "Close", "Volume"}
-
-    def parse(self, filepath: str) -> pd.DataFrame:
-        raise NotImplementedError("Implemente OHLCVParser.parse() no Core.")
-
-    def parse_from_string(self, csv_content: str) -> pd.DataFrame:
-        raise NotImplementedError("Implemente OHLCVParser.parse_from_string() no Core.")
-
-    def validate_columns(self, df: pd.DataFrame) -> None:
-        missing = self.REQUIRED - set(df.columns)
-        if missing:
-            raise MissingColumnsError(f"Colunas ausentes: {missing}")
-
-    def validate_chronological_order(self, df: pd.DataFrame) -> None:
-        if not df.index.is_monotonic_increasing or df.index.duplicated().any():
-            raise OutOfOrderDatesError("Datas fora de ordem cronológica ou duplicadas.")
-
-    def validate_capital(self, capital: float) -> None:
-        if capital <= 0:
-            raise ValueError("Capital inicial deve ser estritamente positivo.")
 
 
 # ---------------------------------------------------------------------------
@@ -196,21 +138,15 @@ class TestOHLCVParserMocked:
     def test_parse_calls_open_with_correct_path(self):
         """O parser deve abrir o arquivo no caminho informado."""
         parser = OHLCVParser()
-        with patch("builtins.open", mock_open(read_data=VALID_CSV_CONTENT)):
+        with patch("pathlib.Path.read_text", return_value=VALID_CSV_CONTENT):
             # Quando parse() for implementado, esta chamada não deve lançar exceção
             # e deve retornar um DataFrame com 3 linhas.
-            try:
-                df = parser.parse("petr4.csv")
-                assert len(df) == 3
-            except NotImplementedError:
-                pytest.skip("parse() ainda não implementado — stub em uso.")
+            df = parser.parse("petr4.csv")
+            assert len(df) == 3
 
     def test_parse_invalid_file_raises_invalid_csv_error(self):
         """Arquivo ilegível deve levantar InvalidCSVError."""
         parser = OHLCVParser()
-        with patch("builtins.open", side_effect=OSError("File not found")):
-            try:
-                with pytest.raises((InvalidCSVError, OSError)):
-                    parser.parse("inexistente.csv")
-            except NotImplementedError:
-                pytest.skip("parse() ainda não implementado — stub em uso.")
+        with patch("pathlib.Path.read_text", side_effect=OSError("File not found")):
+            with pytest.raises(InvalidCSVError):
+                parser.parse("inexistente.csv")

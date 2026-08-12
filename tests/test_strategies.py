@@ -11,9 +11,10 @@ Cobre:
 
 import pytest
 from unittest.mock import MagicMock
-from dataclasses import dataclass
-from abc import ABC, abstractmethod
 import pandas as pd
+
+from python_pdm_template.core.strategies import BaseStrategy, BuyAndHoldStrategy, MovingAverageStrategy, SimulationResult
+from python_pdm_template.core.exceptions import BankruptcyError
 
 # ---------------------------------------------------------------------------
 # Constantes de teste
@@ -24,67 +25,6 @@ DEFAULT_LONG_WINDOW = 21
 CUSTOM_SHORT_WINDOW = 5
 CUSTOM_LONG_WINDOW = 20
 MAX_WIN_RATE_PCT = 100.0
-
-
-# ---------------------------------------------------------------------------
-# Stubs para TDD — substitua pelos imports reais quando o Core existir:
-#
-#   from core.strategies.base import BaseStrategy, SimulationResult
-#   from core.strategies.buy_and_hold import BuyAndHoldStrategy
-#   from core.strategies.moving_average import MovingAverageStrategy
-#   from core.exceptions import BankruptcyError
-# ---------------------------------------------------------------------------
-
-class BankruptcyError(Exception):
-    """Levantada quando o saldo do investidor atinge zero ou fica negativo."""
-
-
-@dataclass
-class SimulationResult:
-    """
-    Contrato de saída de qualquer estratégia.
-
-    O Core deve retornar este objeto ao fim de cada simulação.
-    """
-
-    final_balance: float
-    total_return_pct: float
-    win_rate_pct: float
-    max_drawdown_pct: float
-    total_trades: int
-    operations: list  # lista de dicts com detalhes de cada operação
-
-
-class BaseStrategy(ABC):
-    """Contrato que toda estratégia deve implementar (padrão Strategy)."""
-
-    @abstractmethod
-    def run(self, data: pd.DataFrame, initial_capital: float) -> SimulationResult:
-        """Execute a estratégia e retorne o resultado da simulação."""
-        raise NotImplementedError
-
-
-class BuyAndHoldStrategy(BaseStrategy):
-    """Stub: compra no primeiro dia, vende no último."""
-
-    def run(self, data: pd.DataFrame, initial_capital: float) -> SimulationResult:
-        """Execute a estratégia Buy and Hold."""
-        raise NotImplementedError("Implemente BuyAndHoldStrategy.run() no Core.")
-
-
-class MovingAverageStrategy(BaseStrategy):
-    """Stub: golden cross / death cross com SMA configurável."""
-
-    def __init__(self, short_window: int = 9, long_window: int = 21):
-        """Inicialize a estratégia com as janelas curta e longa."""
-        if short_window >= long_window:
-            raise ValueError("short_window deve ser menor que long_window.")
-        self.short_window = short_window
-        self.long_window = long_window
-
-    def run(self, data: pd.DataFrame, initial_capital: float) -> SimulationResult:
-        """Execute a estratégia de médias móveis."""
-        raise NotImplementedError("Implemente MovingAverageStrategy.run() no Core.")
 
 
 # ---------------------------------------------------------------------------
