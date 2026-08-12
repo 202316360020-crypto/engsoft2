@@ -62,6 +62,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
-            -Dsonar.projectKey=danielmartins_engsoft2
-            -Dsonar.organization=danielmartins
+            -Dsonar.projectKey=202316360020-crypto_engsoft2
+            -Dsonar.organization=202316360020-crypto
             -Dsonar.python.coverage.reportPaths=coverage.xml
+
