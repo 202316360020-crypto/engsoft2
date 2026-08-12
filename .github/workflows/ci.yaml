@@ -54,6 +54,12 @@ jobs:
       # TODO: Adicione aqui uma etapa para rodar o linter "ruff"
       - name: Rodar ruff
         run: pdm run ruff check src/
+
+      # Roda os testes do Pytest gerando o relatório de cobertura XML
+      - name: Run Tests with Coverage
+        run: pdm run pytest --cov=. --cov-report=xml
+        shell: bash
+
       
               
 
