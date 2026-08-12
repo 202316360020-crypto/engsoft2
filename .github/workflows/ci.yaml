@@ -1,29 +1,24 @@
-# Workflow de CI para rodar linters e verificações de qualidade de código
+# Workflow de CI para rodar linters, testes e verificação de qualidade de código
 name: Integracao Continua
 
-# Dispara o workflow em push ou execução manual.
-#     Veja https://docs.github.com/pt/actions/using-workflows/events-that-trigger-workflows para mais opções de eventos
 on: [push, workflow_dispatch]
 
 jobs:
   test:
-    # Nome do job exibido na interface do GitHub Actions
     name: Test on ${{ matrix.os }} with Python
-    # Define o sistema operacional para rodar o job (matriz)
     runs-on: ${{ matrix.os }}
 
     strategy:
       matrix:
-        # Testa em múltiplos sistemas operacionais
         os: [windows-latest]
-        # Testa com a versão mais recente do Python 3
         python-version:
           - "3.x"
 
     steps:
-      # Faz o checkout do código-fonte do repositório
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       # Instala a versão do Python definida na matriz
       - name: Set up Python ${{ matrix.python-version }}
@@ -31,7 +26,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      # Cache das dependências do PDM para acelerar execuções futuras
+      # Cache das dependências do PDM
       - name: Cache PDM dependencies for Python ${{ matrix.python-version }}
         uses: actions/cache@v4
         with:
@@ -43,15 +38,15 @@ jobs:
             ${{ runner.os }}-pdm-python-${{ matrix.python-version }}-
 
       # Instala o PDM, dependências do projeto e checa integridade dos pacotes
-      - name: Install Python  ${{ matrix.python-version }} dependencies for ${{ matrix.os }}
+      - name: Install Python ${{ matrix.python-version }} dependencies for ${{ matrix.os }}
         run: |
-          python -m pip install --upgrade pip  # Atualiza o pip
-          pip install pdm                     # Instala o PDM
-          pdm install --dev                   # Instala as dependências do projeto e do grupo dev
-          pdm run pip check                  # Checa integridade dos pacotes
+          python -m pip install --upgrade pip
+          pip install pdm
+          pdm install --dev
+          pdm run pip check
         shell: bash
 
-      # TODO: Adicione aqui uma etapa para rodar o linter "ruff"
+      # Roda o linter "ruff"
       - name: Rodar ruff
         run: pdm run ruff check src/
 
@@ -60,8 +55,13 @@ jobs:
         run: pdm run pytest --cov=. --cov-report=xml
         shell: bash
 
-      
-              
-
-
-
+      # Envia os resultados dos testes e cobertura para o SonarCloud
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=danielmartins_engsoft2
+            -Dsonar.organization=danielmartins
+            -Dsonar.python.coverage.reportPaths=coverage.xml
